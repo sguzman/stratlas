@@ -50,7 +50,7 @@ const state={
   regionId:read("region","la-county"),
   baseId:read("basemap","osm"),
   cartoKey:read("cartoKey",""),
-  count:0, blocked:0, showGrid:read("grid","false")==="true"
+  count:0, blocked:0, showGrid:read("grid","true")==="true"
 };
 if (!REGIONS[state.regionId] && state.regionId!=="viewport") state.regionId="la-county";
 if (!BASES[state.baseId]) state.baseId="osm";

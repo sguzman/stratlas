@@ -140,7 +140,13 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       return {features:rows,partial:true,cached:false};
     const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
     const quadrants=[[w,s,mx,my],[mx,s,e,my],[w,my,mx,n],[mx,my,e,n]];
+    // Keep parent-page results as a safety net when the bounded child-query
+    // budget is exhausted. Dedupe overlapping polygons by stable OBJECTID.
     const combined=new Map();
+    for(const feature of rows){
+      const id=feature.properties?.OBJECTID??feature.id;
+      if(id!==undefined)combined.set(String(id),feature);
+    }
     let partial=false;
     for(const child of quadrants){
       if(controller.signal.aborted)throw new DOMException("Canceled","AbortError");
