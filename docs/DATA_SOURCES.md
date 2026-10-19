@@ -12,6 +12,12 @@ Tile URLs, licensing and service limits may change; periodically verify provider
 
 Los Angeles City Department of City Planning zoning polygons: https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15 . The published layer supports GeoJSON and geographic queries, with `Zoning` and `CATEGORY` attributes and 2,000 maximum records per query. Activated only at zoom 13+, only within view/study/source intersection. See [ZONING.md](ZONING.md).
 
+## Census demographics / income pilot (live browser QA pending)
+
+- TIGERweb ACS2024 tract boundaries: https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_ACS2024/MapServer/8
+- Census Reporter 2020–2024 ACS five-year estimates: https://api.censusreporter.org/1.0/data/show/acs2024_5yr
+- Scope: visible LA County census tracts only, with geographic and count limits. See [CENSUS.md](CENSUS.md).
+
 ## Candidate overlays, not yet wired
 
 - Additional LA City GeoHub land use: https://geohub.lacity.org/

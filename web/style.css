@@ -35,3 +35,11 @@ main{position:relative;min-width:0;background:#15212b}
 #status{position:absolute;bottom:35px;left:16px;max-width:min(420px,calc(100% - 32px));padding:9px 12px;background:#142434ea;border:1px solid #45647b;border-radius:7px;font-size:11px;color:#c9dee9;pointer-events:none}
 .maplibregl-ctrl-attrib{font-size:11px!important}
 @media(max-width:730px){.shell{grid-template-columns:1fr;grid-template-rows:300px minmax(400px,1fr);height:auto;min-height:100dvh}.sidebar{height:300px;display:block;padding:16px 18px}.sidebar section{padding:14px 0}.sidebar header{padding-bottom:10px}h1{font-size:28px}main{height:calc(100dvh - 300px);min-height:400px}.map-top{top:8px;left:8px;right:8px}.map-top span{font-size:10px}}
+
+/* Small, neutral choropleth key; displayed only for active ACS metrics. */
+.data-label{margin-top:19px;color:#bbd4e1;font-weight:600}
+#acs-legend{margin-top:12px}
+.legend-label{font-size:11px;color:#aac5d2;margin-bottom:7px}
+.legend-gradient{height:9px;border-radius:4px;border:1px solid #ffffff24}
+.legend-range{display:flex;justify-content:space-between;font-size:10px;color:#9db4c0;margin-top:5px}
+#acs-legend .meta{margin-top:5px}

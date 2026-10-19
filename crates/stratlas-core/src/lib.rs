@@ -163,6 +163,63 @@ pub fn filter_geojson_bbox(input:&str,w:f64,s:f64,e:f64,n:f64)->Result<String,Js
     Ok(data.to_string())
 }
 
+
+/// Join 2024 ACS tabulations to 2024 TIGER census-tract GeoJSON by exact GEOID.
+/// Statistical aggregation, validity checks, and percentages run in Rust/WASM.
+/// Census Reporter shape: data["14000US{GEOID}"][table].estimate[column].
+/// Missing or Census-suppressed values become null, never zero.
+#[wasm_bindgen]
+pub fn enrich_acs_tracts(geojson: &str, acs_json: &str) -> Result<String, JsValue> {
+    let mut collection: Value = serde_json::from_str(geojson)
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let acs: Value = serde_json::from_str(acs_json)
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let features = collection.get_mut("features")
+        .and_then(Value::as_array_mut)
+        .ok_or_else(|| JsValue::from_str("Expected GeoJSON FeatureCollection"))?;
+    let data = acs.get("data").and_then(Value::as_object)
+        .ok_or_else(|| JsValue::from_str("Expected Census Reporter data object"))?;
+
+    fn estimate(record: &Value, table: &str, col: &str) -> Option<f64> {
+        let value = record.get(table)?.get("estimate")?.get(col)?.as_f64()?;
+        if value.is_finite() && value >= 0.0 { Some(value) } else { None }
+    }
+    fn percentage(part: Option<f64>, total: Option<f64>) -> Option<f64> {
+        let (part, total) = (part?, total?);
+        if total > 0.0 && part <= total {
+            Some((part / total * 100.0).clamp(0.0, 100.0))
+        } else { None }
+    }
+    for feature in features {
+        let Some(props) = feature.get_mut("properties").and_then(Value::as_object_mut)
+            else { continue };
+        let Some(geoid) = props.get("GEOID").and_then(Value::as_str)
+            .map(str::to_owned) else { continue };
+        if geoid.len() != 11 || !geoid.bytes().all(|c| c.is_ascii_digit()) { continue; }
+        let id = format!("14000US{geoid}");
+        let Some(record) = data.get(&id) else { continue };
+        let total = estimate(record, "B01001", "B01001001");
+        let female = estimate(record, "B01001", "B01001026");
+        let ethnic_total = estimate(record, "B03002", "B03002001");
+        let hispanic = estimate(record, "B03002", "B03002012");
+        let nonhispanic_white = estimate(record, "B03002", "B03002003");
+        let income = estimate(record, "B19013", "B19013001");
+        let income_moe = record.get("B19013")
+            .and_then(|v| v.get("error"))
+            .and_then(|v| v.get("B19013001"))
+            .and_then(Value::as_f64)
+            .filter(|v| v.is_finite() && *v >= 0.0);
+        props.insert("acs_income".into(), json!(income));
+        props.insert("acs_income_moe".into(), json!(income_moe));
+        props.insert("acs_population".into(), json!(total));
+        props.insert("acs_female_pct".into(), json!(percentage(female, total)));
+        props.insert("acs_hispanic_pct".into(), json!(percentage(hispanic, ethnic_total)));
+        props.insert("acs_nh_white_pct".into(),
+            json!(percentage(nonhispanic_white, ethnic_total)));
+    }
+    Ok(collection.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,4 +257,32 @@ mod tests {
         let obj:Value=serde_json::from_str(&result).unwrap();
         assert_eq!(obj["features"].as_array().unwrap().len(),1);
     }
+    #[test]
+    fn join_acs_handles_missing_and_suppressed_statistics() {
+        let geo = r#"{"type":"FeatureCollection","features":[
+          {"type":"Feature","properties":{"GEOID":"06037101010"},"geometry":{"type":"Point","coordinates":[-118.1,34.1]}},
+          {"type":"Feature","properties":{"GEOID":"06037101020"},"geometry":{"type":"Point","coordinates":[-118.2,34.2]}}
+        ]}"#;
+        let acs = r#"{"data":{"14000US06037101010":{
+          "B01001":{"estimate":{"B01001001":100,"B01001026":53}},
+          "B03002":{"estimate":{"B03002001":100,"B03002012":40,"B03002003":35}},
+          "B19013":{"estimate":{"B19013001":85000},"error":{"B19013001":12000}}
+        },"14000US06037101020":{
+          "B01001":{"estimate":{"B01001001":0,"B01001026":0}},
+          "B19013":{"estimate":{"B19013001":-666666666}}
+        }}}"#;
+        let result:Value = serde_json::from_str(&enrich_acs_tracts(geo,acs).unwrap()).unwrap();
+        let a=&result["features"][0]["properties"];
+        assert_eq!(a["acs_income"],85000.0);
+        assert_eq!(a["acs_income_moe"],12000.0);
+        assert_eq!(a["acs_population"],100.0);
+        assert_eq!(a["acs_female_pct"],53.0);
+        assert_eq!(a["acs_hispanic_pct"],40.0);
+        assert_eq!(a["acs_nh_white_pct"],35.0);
+        let b=&result["features"][1]["properties"];
+        assert!(b["acs_income"].is_null());
+        assert!(b["acs_female_pct"].is_null());
+        assert!(b["acs_hispanic_pct"].is_null());
+    }
+
 }

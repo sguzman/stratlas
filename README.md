@@ -17,7 +17,9 @@ A Rust/WebAssembly-first geographic research map that only requests visible tile
 
 **First data adapter:** Los Angeles City zoning. Enable the checkbox, then zoom to 13+ within the city. The overlay uses the City Planning ArcGIS GeoJSON endpoint with viewport- and study-bounded queries, cancellable pagination, click-to-inspect zoning, HTTP caching, and Rust/WASM post-filtering. This adapter is source-verified, but live browser compatibility still needs QA; failure states are shown in the interface. Read [zoning integration notes](docs/ZONING.md).
 
-**Not yet implemented:** Census, elections, household wealth, land prices, and other statistical overlays. They require additional verified public API adapters; the UI does not invent datasets.
+**Second API adapter:** Census Bureau TIGERweb tracts joined in Rust/WASM to Census Reporter 2020–2024 ACS income, population, Hispanic/Latino share, female share and non-Hispanic White-alone share. Viewport-bounded to LA County, at zoom 12+. See [ACS documentation](docs/CENSUS.md). Live browser QA still pending.
+
+**Not yet implemented:** Elections, household wealth, land prices, and other statistical overlays. They require additional verified public API adapters; the UI does not invent datasets.
 
 ## Local setup
 

@@ -1,6 +1,7 @@
 import { createZoningOverlay } from "./zoning.js";
+import { createCensusOverlay } from "./census.js";
 import init, {
-  tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox
+  tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox, enrich_acs_tracts
 } from "./pkg/stratlas_core.js";
 
 const REGIONS = {
@@ -125,6 +126,14 @@ async function start() {
     onStatus:message=>$("overlay-status").textContent=message
   });
   $("zoning").addEventListener("change",event=>zoning.setEnabled(event.target.checked));
+  const census=createCensusOverlay(map,{
+    getRegion:()=>region().bbox,
+    filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
+    enrichFeatures:enrich_acs_tracts,
+    onStatus:message=>$("acs-status").textContent=message,
+    legendContainer:$("acs-legend")
+  });
+  $("acs-metric").addEventListener("change",event=>census.setMetric(event.target.value));
 
   const empty=()=>({type:"FeatureCollection",features:[]});
   function boundsObj() {
@@ -179,6 +188,7 @@ async function start() {
     // Force MapLibre to discard previous-region raster tiles.
     map.setStyle(styleForBase());
     zoning.onRegionChange();
+    census.onRegionChange();
   }
   function switchBase() {
     const selected=BASES[state.baseId];
