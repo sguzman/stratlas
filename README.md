@@ -9,12 +9,15 @@ A Rust/WebAssembly-first geographic research map that only requests visible tile
 - Rust/WASM spatial engine: per-tile region intersection, Mercator/slippy conversions, spherical area estimates, interactive diagnostic tile grid, and GeoJSON feature culling.
 - MapLibre GL JS GPU map rendering (not a custom GPU renderer).
 - Rectangular regions: Los Angeles County, Los Angeles City, California, Jalisco, and a capture-the-current-viewport option. Administrative presets are approximate bounding rectangles, not exact jurisdictional polygons.
+- First API data overlay: City of Los Angeles zoning polygons (only at detailed zoom levels, disabled by default).
 - Five selectable basemaps: OpenStreetMap, OpenTopoMap, and key-required CARTO Voyager/Positron/Dark Matter.
 - Provider attribution, no prefetch, browser-native HTTP cache honoring provider headers.
 - Region and map provider saved in the browser; optional CARTO key is saved locally only, never committed.
 - GitHub Actions tests Rust, builds WASM, and publishes to GitHub Pages.
 
-**Not yet implemented:** Census, zoning, elections, household wealth, land prices, and other statistical overlays. They require working, verified public API adapters; the UI does not invent datasets.
+**First data adapter:** Los Angeles City zoning. Enable the checkbox, then zoom to 13+ within the city. The overlay uses the City Planning ArcGIS GeoJSON endpoint with viewport- and study-bounded queries, cancellable pagination, click-to-inspect zoning, HTTP caching, and Rust/WASM post-filtering. This adapter is source-verified, but live browser compatibility still needs QA; failure states are shown in the interface. Read [zoning integration notes](docs/ZONING.md).
+
+**Not yet implemented:** Census, elections, household wealth, land prices, and other statistical overlays. They require additional verified public API adapters; the UI does not invent datasets.
 
 ## Local setup
 

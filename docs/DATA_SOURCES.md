@@ -8,9 +8,13 @@
 
 Tile URLs, licensing and service limits may change; periodically verify provider policies.
 
+## First API overlay (code integrated, browser QA pending)
+
+Los Angeles City Department of City Planning zoning polygons: https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15 . The published layer supports GeoJSON and geographic queries, with `Zoning` and `CATEGORY` attributes and 2,000 maximum records per query. Activated only at zoom 13+, only within view/study/source intersection. See [ZONING.md](ZONING.md).
+
 ## Candidate overlays, not yet wired
 
-- LA City GeoHub zoning and land use: https://geohub.lacity.org/
+- Additional LA City GeoHub land use: https://geohub.lacity.org/
 - LA County planning GIS: https://planning.lacounty.gov/maps-and-gis/gis-data/
 - US Census/ACS geographic statistics: https://www.census.gov/data/developers/data-sets/acs-5year.html
 - Mexico INEGI 2020 census: https://www.inegi.org.mx/programas/ccpv/2020/

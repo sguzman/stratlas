@@ -1,5 +1,6 @@
+import { createZoningOverlay } from "./zoning.js";
 import init, {
-  tile_in_region, region_area_km2, visible_grid_geojson
+  tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox
 } from "./pkg/stratlas_core.js";
 
 const REGIONS = {
@@ -118,6 +119,12 @@ async function start() {
   });
   map.addControl(new maplibregl.NavigationControl({showCompass:true}),"top-right");
   map.addControl(new maplibregl.ScaleControl({unit:"metric"}),"bottom-left");
+  const zoning=createZoningOverlay(map,{
+    getRegion:()=>region().bbox,
+    filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
+    onStatus:message=>$("overlay-status").textContent=message
+  });
+  $("zoning").addEventListener("change",event=>zoning.setEnabled(event.target.checked));
 
   const empty=()=>({type:"FeatureCollection",features:[]});
   function boundsObj() {
@@ -171,6 +178,7 @@ async function start() {
     if (fit) map.fitBounds([[w,s],[e,n]],{padding:35,duration:0});
     // Force MapLibre to discard previous-region raster tiles.
     map.setStyle(styleForBase());
+    zoning.onRegionChange();
   }
   function switchBase() {
     const selected=BASES[state.baseId];

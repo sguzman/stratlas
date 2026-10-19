@@ -27,7 +27,9 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
       - name: Check JavaScript syntax
-        run: node --check web/app.js
+        run: |
+          node --check web/app.js
+          node --check web/zoning.js
       - name: Test spatial core
         run: cargo test --workspace
       - name: Install wasm-pack

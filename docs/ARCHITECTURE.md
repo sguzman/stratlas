@@ -18,11 +18,11 @@ A narrow Rust function filter_geojson_bbox is available for intersecting-feature
 
 Basemap tiles use fetch with browser default HTTP caching, honoring provider Cache-Control/Expires/ETag. User selection does not download an entire study region and does not prefetch future zoom levels. Browser caches may be evicted.
 
-For future permitted statistical data APIs, build versioned IndexedDB storage with per-source TTL, bounded capacity, schema migrations and a clear-cache control. Never treat an API response as permanently current and never ignore provider caching terms. No persistent data server is required.
+For future permitted statistical data APIs, build versioned IndexedDB storage with per-source TTL, bounded capacity, schema migrations and a clear-cache control. Never treat an API response as permanently current and never ignore provider caching terms. No persistent data server is required. The zoning adapter also uses a bounded six-window in-memory LRU; it does not override upstream tile caching policies.
 
 ## Future work
 
-- Validate an authoritative ArcGIS public FeatureServer layer with browser CORS and bbox query, then add real GeoJSON overlays.
+- Complete live-browser QA of the first LA City Planning ArcGIS zoning FeatureServer adapter (`web/zoning.js`; details in `docs/ZONING.md`).
 - Add Census/INEGI statistical geography joins with stable geographic IDs and year metadata.
 - Add election precinct/section aggregates and local zoning providers.
 - Add independent layer toggles, legends, provenance, and efficient Rust spatial joins.
