@@ -110,7 +110,7 @@
       "credentials": "none for current geographic endpoint",
       "cache": "up to 30 days unless response directives restrict",
       "min_zoom": 12,
-      "limits": "250 visible tracts maximum"
+      "limits": "251 records requested per geographic response; >250 or explicit transfer-limit triggers subdivision (depth <=6, 24 requests per navigation). Successful coverage retained; incomplete pockets reported."
     },
     {
       "id": "acs2024",
@@ -133,7 +133,7 @@
       "policy": "https://github.com/censusreporter/census-api",
       "credentials": "none in current adapter",
       "cache": "up to 90 days unless response directives restrict",
-      "limits": "Sampling uncertainty and suppressed estimates; income is not net wealth"
+      "limits": "Batches of up to 40 visible GEOIDs, two concurrent requests; ACS sampling error and suppressed estimates."
     },
     {
       "id": "la-geohub",

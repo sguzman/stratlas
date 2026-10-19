@@ -73,7 +73,8 @@
         </select>
         <div id="acs-legend" aria-label="Census thematic map legend"></div>
         <p id="acs-status" class="meta" aria-live="polite">Off · ACS 2020–2024 · Census Reporter / TIGERweb · zoom 12+</p>
-        <p class="meta">Choose a layer above. Already loaded features stay visible while zooming out; new Census data loads at zoom 12+ and new zoning at zoom 13+. API errors appear in each layer status.</p>
+        <button type="button" id="preview-income">Show LA income at tract scale (zoom 13)</button>
+        <p class="meta">Overlays start OFF, and require zoom 12+ (Census) or 13+ (zoning). Enable a layer to query real data. If an API fails, its status appears above. Other regions currently have basemaps but not demographic overlays.</p>
         <p class="meta">Election results, household wealth, and land prices remain planned. No synthetic data.</p>
         <a href="https://github.com/sguzman/stratlas/blob/main/docs/sources/README.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
       </section>
@@ -84,10 +85,8 @@
     </aside>
     <main>
       <div id="map" role="application" aria-label="Interactive geographic study map"></div>
-      <canvas id="grid-canvas" class="grid-canvas" aria-hidden="true" hidden></canvas>
       <div class="map-top">
         <span id="study-name">Los Angeles County</span>
-        <span id="zoom-level" aria-label="Current map zoom">Zoom —</span>
         <span id="coordinates">—</span>
       </div>
       <div id="status" role="status" aria-live="polite">Loading Rust/WASM spatial engine…</div>

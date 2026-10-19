@@ -101,19 +101,44 @@ test("only intersecting tracts are retrieved; metric switching does not refetch"
   c.setMetric("income");await settle();
   assert.equal(urls.length,2,"Re-enabling same tract view must use retained estimates");
 });
-test("no partial choropleth when viewport exceeds 250 tract limit",async()=>{
-  let count=0;const statuses=[];
+test("oversized viewport is subdivided instead of rejected at 250 tracts",async()=>{
+  const urls=[],statuses=[];
   globalThis.fetch=async url=>{
-    count++;
-    if(url.includes("censusreporter"))throw Error("Statistics must not be fetched");
-    return {ok:true,json:async()=>({type:"FeatureCollection",
-      features:Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))})};
+    const parsed=new URL(url);
+    urls.push(parsed);
+    if(parsed.hostname==="api.censusreporter.org")
+      return {ok:true,json:async()=>figures};
+    const bbox=parsed.searchParams.get("geometry").split(",").map(Number);
+    const tooWide=bbox[2]-bbox[0]>0.027;
+    return {ok:true,json:async()=>({
+      type:"FeatureCollection",
+      features:tooWide
+        ? Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))
+        : [feature("06037101010")],
+      exceededTransferLimit:false
+    })};
   };
   const map=new FakeMap(),c=overlay(map,statuses);
   c.setMetric("income");await settle();
-  assert.equal(count,1);
-  assert.match(statuses.at(-1),/Too many tracts/);
-  assert.equal(map.getSource("acs-tracts").data.features.length,0);
+  const geom=urls.filter(x=>x.hostname==="tigerweb.geo.census.gov");
+  assert.ok(geom.length>=5, "A large response must be subdivided");
+  assert.ok(geom.length<=24, "Bound the requests per navigation");
+  assert.equal(map.getSource("acs-tracts").data.features.length,1);
+  assert.doesNotMatch(statuses.at(-1),/Too many tracts/);
+});
+test("permanently capped provider still has bounded work, retains data, and reports partial coverage",async()=>{
+  const requests=[],statuses=[];
+  globalThis.fetch=async url=>{
+    requests.push(url);
+    if(url.includes("censusreporter"))throw Error("No stats for truncated data");
+    return {ok:true,json:async()=>({type:"FeatureCollection",features:
+      Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))
+    })};
+  };
+  const map=new FakeMap(),c=overlay(map,statuses);
+  c.setMetric("income");await settle();
+  assert.ok(requests.length<=24);
+  assert.match(statuses.at(-1),/additional dense sections|detail still loading/);
 });
 
 test("early style.load registers census source before basemap tiles finish",async()=>{
@@ -137,4 +162,43 @@ test("zoom-out keeps previously visited tract estimates, with no API refetch",as
   map.zoom=9;map.fire("moveend");await settle();
   assert.equal(map.getSource("acs-tracts").data.features.length,1);
   assert.equal(calls.length,2);
+});
+
+test("pan queries only new geographic strips and does not redownload covered area",async()=>{
+  const urls=[],statuses=[],map=new FakeMap();
+  globalThis.fetch=async url=>{
+    urls.push(new URL(url));
+    return {ok:true,json:async()=>url.includes("tigerweb")?geojson:figures};
+  };
+  const c=overlay(map,statuses);
+  c.setMetric("income");await settle();
+  const firstShapes=urls.filter(u=>u.hostname==="tigerweb.geo.census.gov");
+  assert.equal(firstShapes.length,1);
+  const coveredEast=Number(firstShapes[0].searchParams.get("geometry").split(",")[2]);
+  map.viewport=[-118.25,34.01,-118.21,34.07];
+  map.fire("moveend");
+  await new Promise(r=>setTimeout(r,185));
+  await settle();
+  const shapes=urls.filter(u=>u.hostname==="tigerweb.geo.census.gov");
+  assert.equal(shapes.length,2,"Only the unseen strip is fetched on a small pan");
+  const [w,s,e,n]=shapes[1].searchParams.get("geometry").split(",").map(Number);
+  assert.ok(w>=coveredEast-0.00001,"Do not query already-covered longitudes");
+  assert.equal(urls.filter(u=>u.hostname==="api.censusreporter.org").length,1,
+    "Already known tract statistics are reused");
+});
+test("geometry appears before slow ACS statistics finish",async()=>{
+  const map=new FakeMap(),statuses=[];
+  let resolveStats;
+  globalThis.fetch=async url=>{
+    if(url.includes("tigerweb"))return {ok:true,json:async()=>geojson};
+    return new Promise(resolve=>{resolveStats=()=>resolve({ok:true,json:async()=>figures})});
+  };
+  const c=overlay(map,statuses);
+  c.setMetric("income");await settle();
+  assert.equal(typeof resolveStats,"function");
+  assert.equal(map.getSource("acs-tracts").data.features.length,1,
+    "Map should show geometry while still waiting for remote estimates");
+  assert.match(statuses.at(-1),/boundaries ready|loading/);
+  resolveStats();await settle();
+  assert.equal(map.getSource("acs-tracts").data.features[0].properties.acs_income,85000);
 });

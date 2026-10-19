@@ -98,28 +98,27 @@ function validateGeoid(value){
 }
 
 export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures,onStatus,legendContainer,dataCache}){
-  let metric="off",token=0,abort=null,lastWindow="",lastData=empty();
-  const windows=new Map(), tabulations=new Map();
-  // Retain previously visited tracts, even when the map zooms out or the
-  // user switches metrics. Bounded to avoid a giant in-memory county dump.
+  let metric="off",token=0,abort=null,lastData=empty(),movementTimer=null;
+  const tabulations=new Map();
   const retained=new Map();
-  const MAX_RETAINED=1600;
-  let pendingWindow="";
+  // Successful viewport subdivisions are remembered as geographic coverage,
+  // so a pan only fetches previously unseen strips, not the whole viewport.
+  const covered=[];
+  const MAX_RETAINED=3000,MAX_COVERAGE=128,MAX_GEO_CALLS=24,MAX_DEPTH=6;
   const report=message=>onStatus(message);
+  const geokey=box=>box.map(n=>n.toFixed(5)).join(",");
   function cancel(){
     token++;
-    if(abort)abort.abort();
+    abort?.abort();
     abort=null;
+    if(movementTimer!==null){clearTimeout(movementTimer);movementTimer=null}
   }
-  function source(){
-    return map.getSource(SOURCE);
-  }
+  function source(){return map.getSource(SOURCE)}
   function ensureLayer(){
     if(source())return;
     map.addSource(SOURCE,{type:"geojson",data:lastData});
     map.addLayer({id:FILL,source:SOURCE,type:"fill",
-      paint:{"fill-color":colorExpression(metric==="off"?"income":metric),
-        "fill-opacity":0.54}});
+      paint:{"fill-color":colorExpression(metric==="off"?"income":metric),"fill-opacity":0.54}});
     map.addLayer({id:OUTLINE,source:SOURCE,type:"line",
       paint:{"line-color":"#243845","line-opacity":0.55,"line-width":0.55}});
   }
@@ -136,127 +135,223 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     visibility();
   }
   function publish(){
-    // Retained geometry from a former region is not rendered outside the
-    // currently selected study rectangle; however, it remains in memory.
+    // Keep previously visited tracts, including values that haven't yet
+    // completed a stats query. The study rectangle still controls visibility.
     lastData=JSON.parse(filterFeatures(JSON.stringify({
       type:"FeatureCollection",features:[...retained.values()]
     }),...getRegion()));
     render();
   }
   function merge(features){
+    let changed=false;
     for(const f of features){
       const id=f.properties?.GEOID;
-      if(!id)continue;
-      retained.delete(id);retained.set(id,f);
-      while(retained.size>MAX_RETAINED)retained.delete(retained.keys().next().value);
+      if(!validateGeoid(id))continue;
+      const previous=retained.get(id);
+      // A geometry refresh must not erase previously enriched ACS statistics.
+      if(previous)f.properties={...previous.properties,...f.properties};
+      retained.delete(id);retained.set(id,f);changed=true;
+      while(retained.size>MAX_RETAINED){
+        retained.delete(retained.keys().next().value);
+        // A previously completed area might now be missing features.
+        covered.length=0;
+      }
     }
-    publish();
+    if(changed)publish();
   }
-  function cachePut(key,features){
-    windows.delete(key);windows.set(key,features);
-    if(windows.size>8)windows.delete(windows.keys().next().value);
+  function subtractBox(rect,used){
+    const joint=intersect(rect,used);
+    if(!joint)return [rect];
+    const [w,s,e,n]=rect,[iw,is,ie,inorth]=joint;
+    const candidates=[
+      [w,s,iw,n],[ie,s,e,n],
+      [iw,s,ie,is],[iw,inorth,ie,n]
+    ];
+    return candidates.filter(b=>b[0]<b[2]&&b[1]<b[3]);
+  }
+  function missingAreas(rect){
+    let remaining=[rect];
+    for(const section of covered){
+      remaining=remaining.flatMap(b=>subtractBox(b,section));
+      if(!remaining.length)break;
+      // In heavily revisited geography, avoid pathological fragmentation.
+      if(remaining.length>64)return [rect];
+    }
+    return remaining;
+  }
+  function rememberCovered(box){
+    covered.push(box);
+    if(covered.length>MAX_COVERAGE)covered.shift();
+  }
+  function validateShapes(body){
+    if(body?.error)throw Error(body.error.message||"TIGERweb GIS error");
+    if(body?.type!=="FeatureCollection"||!Array.isArray(body.features))
+      throw Error("TIGERweb did not return GeoJSON");
+    return body;
+  }
+  async function fetchShapes(box,controller,budget,depth,current){
+    if(controller.signal.aborted||current!==token)return false;
+    if(budget.calls>=MAX_GEO_CALLS){budget.incomplete=true;return false}
+    budget.calls++;
+    const url=shapeUrl(box);
+    const body=validateShapes(dataCache
+      ? await dataCache.fetchJson(url,{
+          namespace:"tigerweb-tracts-acs2024-v1",
+          ttlMs:30*24*60*60*1000,signal:controller.signal
+        })
+      : await (async()=>{
+          const response=await fetch(url,{signal:controller.signal,cache:"default",mode:"cors"});
+          if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
+          return response.json();
+        })());
+    if(controller.signal.aborted||current!==token)return false;
+    // The published service may return 251 rows or a truncation marker.
+    // Either means subdivide this *visible* rectangle, not abort the overlay.
+    if(body.features.length>MAX_TRACTS||body.exceededTransferLimit){
+      const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
+      if(depth>=MAX_DEPTH||mx===w||mx===e||my===s||my===n){
+        budget.incomplete=true;
+        return false; // never mark a truncated view as complete
+      }
+      const quadrants=[[w,s,mx,my],[mx,s,e,my],[w,my,mx,n],[mx,my,e,n]];
+      let all=true;
+      for(const child of quadrants){
+        if(controller.signal.aborted||current!==token)return false;
+        const done=await fetchShapes(child,controller,budget,depth+1,current);
+        all=done&&all;
+      }
+      if(all)rememberCovered(box);
+      return all;
+    }
+    const seen=new Set();
+    const features=body.features.filter(f=>{
+      const id=f.properties?.GEOID;
+      if(!validateGeoid(id)||seen.has(id))return false;
+      seen.add(id);return true;
+    });
+    // Only work on features returned inside the selected study area.
+    const clipped=JSON.parse(filterFeatures(JSON.stringify({
+      type:"FeatureCollection",features
+    }),...getRegion()));
+    merge(clipped.features); // show outlines now, before downloading estimates
+    rememberCovered(box);
+    budget.completed++;
+    return true;
+  }
+  function applyStats(ids,data){
+    const features=[];
+    for(const id of ids){
+      const feature=retained.get(id);
+      if(feature)features.push(feature);
+    }
+    if(!features.length)return;
+    const enriched=JSON.parse(enrichFeatures(JSON.stringify({
+      type:"FeatureCollection",features
+    }),JSON.stringify({data})));
+    merge(enriched.features); // recolor each completed group without waiting
+  }
+  async function loadStats(controller,current){
+    const ids=[...retained.keys()].filter(id=>!tabulations.has(id));
+    if(!ids.length)return 0;
+    const groups=[];
+    for(let i=0;i<ids.length;i+=BATCH)groups.push(ids.slice(i,i+BATCH));
+    report("ACS: "+retained.size+" tract boundaries ready · loading "+
+      ids.length+" estimates in "+groups.length+" batches…");
+    let next=0,finished=0,failed=0;
+    async function worker(){
+      while(next<groups.length){
+        if(controller.signal.aborted||current!==token)return;
+        const group=groups[next++];
+        const url=statsUrl(group);
+        let body;
+        try{
+          body=dataCache
+            ? await dataCache.fetchJson(url,{
+                namespace:"censusreporter-acs2024-5yr-v1",
+                ttlMs:90*24*60*60*1000,signal:controller.signal
+              })
+            : await (async()=>{
+                const response=await fetch(url,{signal:controller.signal,cache:"default",mode:"cors"});
+                if(!response.ok)throw Error("Census Reporter HTTP "+response.status);
+                return response.json();
+              })();
+          if(!body?.data||typeof body.data!=="object")
+            throw Error("Census Reporter statistics unavailable");
+        }catch(error){
+          if(controller.signal.aborted||current!==token)return;
+          failed++;
+          report("ACS: "+retained.size+" shapes retained · statistics delayed: "+error.message);
+          continue; // other independent groups can still finish
+        }
+        if(controller.signal.aborted||current!==token)return;
+        const joined={};
+        for(const id of group){
+          const record=body.data["14000US"+id]||null;
+          tabulations.set(id,record);
+          if(record)joined["14000US"+id]=record;
+        }
+        applyStats(group,joined); // incremental coloring
+        finished+=group.length;
+        report("ACS: "+retained.size+" tracts · statistics received for "+
+          finished+"/"+ids.length+" new tracts.");
+      }
+    }
+    // Two bounded concurrent requests reduce high-latency serial waits
+    // without flooding the public statistics provider.
+    await Promise.all(Array.from({length:Math.min(2,groups.length)},()=>worker()));
+    return failed;
   }
   async function reload(){
     if(metric==="off")return;
     ensureLayer();
     if(map.getZoom()<MIN_ZOOM){
-      cancel();pendingWindow="";
+      cancel();
       report("ACS: "+retained.size+" retained tracts stay visible · zoom to "+
         MIN_ZOOM+"+ to load new geography.");return;
     }
     const scope=intersect(intersect(view(map),getRegion()),COUNTY);
     if(!scope){
-      cancel();pendingWindow="";
-      report("ACS: "+retained.size+" previously visited tracts retained · outside LA coverage.");return;
+      cancel();
+      report("ACS: "+retained.size+" retained tracts · outside LA coverage.");return;
     }
+    // Coordinate snapping is bounded by the study/source scope.
     const bbox=intersect(intersect(snap(scope),getRegion()),COUNTY);
     if(!bbox)return;
-    const key=bbox.map(n=>n.toFixed(5)).join(",");
-    if((key===lastWindow||key===pendingWindow) && source())return;
+    const missing=missingAreas(bbox);
+    const needStats=[...retained.keys()].some(id=>!tabulations.has(id));
+    if(!missing.length&&!needStats){
+      report("ACS: "+retained.size+" tracts available · no new API requests.");
+      return;
+    }
     cancel();
-    const current=token;
-    const controller=new AbortController();
-    abort=controller;pendingWindow=key;
+    const current=token,controller=new AbortController();
+    abort=controller;
+    const budget={calls:0,completed:0,incomplete:false};
     try{
-      let shapes=windows.get(key);
-      if(!shapes){
-        report("ACS: retrieving visible tract boundaries…");
-        const url=shapeUrl(bbox);
-        const body=dataCache
-          ? await dataCache.fetchJson(url,{
-              namespace:"tigerweb-tracts-acs2024-v1",
-              ttlMs:30*24*60*60*1000,signal:controller.signal
-            })
-          : await (async()=>{
-              const response=await fetch(url,{
-                signal:controller.signal,cache:"default",mode:"cors"
-              });
-              if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
-              return response.json();
-            })();
-        if(body.error)throw Error(body.error.message||"TIGERweb GIS error");
-        if(body.type!=="FeatureCollection"||!Array.isArray(body.features))
-          throw Error("TIGERweb did not return GeoJSON");
-        if(body.features.length>MAX_TRACTS||body.exceededTransferLimit)
-          throw Error("Too many tracts in viewport; zoom closer (maximum 250).");
-        shapes=JSON.parse(filterFeatures(JSON.stringify(body),...getRegion()));
-        // Deduplicate before API requests. Never ask for non-LA tract GEOIDs.
-        const seen=new Set();
-        shapes.features=shapes.features.filter(f=>{
-          const id=f.properties?.GEOID;
-          if(!validateGeoid(id)||seen.has(id))return false;
-          seen.add(id);return true;
-        });
-        cachePut(key,shapes);
-      }
-      if(current!==token)return;
-      if(!shapes.features.length){
-        lastWindow=key;pendingWindow="";
-        report("ACS: no new tracts in this view · "+retained.size+" retained.");return;
-      }
-      const needed=[...new Set(shapes.features.map(f=>f.properties.GEOID))]
-        .filter(id=>!tabulations.has(id));
-      if(needed.length)report("ACS: loading estimates for "+needed.length+" visible tracts…");
-      for(let i=0;i<needed.length;i+=BATCH){
-        const ids=needed.slice(i,i+BATCH);
-        const url=statsUrl(ids);
-        const body=dataCache
-          ? await dataCache.fetchJson(url,{
-              namespace:"censusreporter-acs2024-5yr-v1",
-              ttlMs:90*24*60*60*1000,signal:controller.signal
-            })
-          : await (async()=>{
-              const response=await fetch(url,{
-                signal:controller.signal,cache:"default",mode:"cors"
-              });
-              if(!response.ok)throw Error("Census Reporter HTTP "+response.status);
-              return response.json();
-            })();
-        if(!body.data || typeof body.data!=="object")
-          throw Error("Census Reporter returned invalid statistics");
-        // Cache all requested IDs, including missing ones, to avoid repeated misses.
-        for(const id of ids){
-          tabulations.set(id,body.data["14000US"+id]||null);
+      if(missing.length){
+        report("ACS: loading "+missing.length+" previously unseen geographic section(s)…");
+        // Region subtraction means a pan queries only unseen pieces.
+        for(const box of missing){
+          if(current!==token||controller.signal.aborted)return;
+          const complete=await fetchShapes(box,controller,budget,0,current);
+          if(!complete&&budget.calls>=MAX_GEO_CALLS)break;
         }
-        if(current!==token)return;
       }
-      const data={data:{}};
-      for(const feature of shapes.features){
-        const id=feature.properties.GEOID;
-        if(tabulations.get(id))data.data["14000US"+id]=tabulations.get(id);
-      }
-      const enriched=JSON.parse(enrichFeatures(JSON.stringify(shapes),JSON.stringify(data)));
-      if(current!==token)return;
-      merge(enriched.features);
-      lastWindow=key;pendingWindow="";abort=null;
-      const n=lastData.features.filter(f=>f.properties?.[METRICS[metric].key]!==null
-        && f.properties?.[METRICS[metric].key]!==undefined).length;
-      report("ACS 2020–2024 · "+n+"/"+lastData.features.length+
-        " retained tracts with "+METRICS[metric].label.toLowerCase()+" data");
+      if(current!==token||controller.signal.aborted)return;
+      if(budget.incomplete)
+        report("ACS: "+retained.size+" tracts retained · detail still loading as you navigate.");
+      const statsFailed=await loadStats(controller,current);
+      if(current!==token||controller.signal.aborted)return;
+      abort=null;
+      const n=lastData.features.filter(f=>f.properties?.[METRICS[metric].key]!=null).length;
+      report("ACS 2020–2024 · "+n+"/"+lastData.features.length+" visible tracts with "+
+        METRICS[metric].label.toLowerCase()+" estimates"+
+        (budget.incomplete?" · additional dense sections available on closer navigation":"")+
+        (statsFailed?" · some estimates delayed (retry on navigation)":""));
     }catch(error){
-      if(current!==token || controller.signal.aborted)return;
-      pendingWindow="";
-      report("ACS: retained "+retained.size+" tracts · request failed: "+error.message);
+      if(current!==token||controller.signal.aborted)return;
+      abort=null;
+      report("ACS: "+retained.size+" tracts retained · provider request failed: "+error.message);
     }
   }
   function setMetric(next){
@@ -265,29 +360,28 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     metric=next;
     legend(legendContainer,metric);
     if(metric==="off"){
-      cancel();pendingWindow="";visibility();
-      report("ACS hidden · "+retained.size+" tracts retained for instant reuse.");
-      return;
+      cancel();visibility();
+      report("ACS hidden · "+retained.size+" tracts retained.");return;
     }
     ensureLayer();publish();
-    if(previous!=="off" && lastData.features.length) {
-      report("ACS 2020–2024 · "+retained.size+" retained tracts");
-      return;
+    if(previous!=="off"&&lastData.features.length){
+      report("ACS 2020–2024 · "+retained.size+" retained tracts");return;
     }
     reload();
   }
   function reset(){
-    cancel();
-    lastWindow="";pendingWindow="";
-    publish();
+    cancel();publish();
     if(metric!=="off")reload();
   }
   map.on("style.load",()=>{
-    cancel();pendingWindow="";
-    ensureLayer();publish();
+    cancel();ensureLayer();publish();
     if(metric!=="off")reload();
   });
-  map.on("moveend",()=>{if(metric!=="off")reload()});
+  map.on("moveend",()=>{
+    if(metric==="off")return;
+    if(movementTimer!==null)clearTimeout(movementTimer);
+    movementTimer=setTimeout(()=>{movementTimer=null;reload()},140);
+  });
   map.on("click",event=>{
     if(metric==="off"||!map.getLayer(FILL))return;
     const found=map.queryRenderedFeatures(event.point,{layers:[FILL]});
@@ -307,8 +401,7 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     ];
     for(const [label,value] of fields){
       const line=document.createElement("div");
-      line.textContent=label+": "+value;
-      root.append(line);
+      line.textContent=label+": "+value;root.append(line);
     }
     const foot=document.createElement("small");
     foot.textContent="ACS 2020–2024 (5-year estimates). Not individual attributes.";
@@ -317,5 +410,5 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       .setDOMContent(root).addTo(map);
   });
   return {setMetric,onRegionChange:reset,
-    clearMemory:()=>{windows.clear();tabulations.clear();lastWindow="";pendingWindow=""}};
+    clearMemory:()=>{covered.length=0;tabulations.clear()}};
 }
