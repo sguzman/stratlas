@@ -189,54 +189,68 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       throw Error("TIGERweb did not return GeoJSON");
     return body;
   }
-  async function fetchShapes(box,controller,budget,depth,current){
-    if(controller.signal.aborted||current!==token)return false;
-    if(budget.calls>=MAX_GEO_CALLS){budget.incomplete=true;return false}
-    budget.calls++;
-    const url=shapeUrl(box);
-    const body=validateShapes(dataCache
-      ? await dataCache.fetchJson(url,{
-          namespace:"tigerweb-tracts-acs2024-v1",
-          ttlMs:30*24*60*60*1000,signal:controller.signal
-        })
-      : await (async()=>{
-          const response=await fetch(url,{signal:controller.signal,cache:"default",mode:"cors"});
-          if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
-          return response.json();
-        })());
-    if(controller.signal.aborted||current!==token)return false;
-    // The published service may return 251 rows or a truncation marker.
-    // Either means subdivide this *visible* rectangle, not abort the overlay.
-    if(body.features.length>MAX_TRACTS||body.exceededTransferLimit){
-      const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
-      if(depth>=MAX_DEPTH||mx===w||mx===e||my===s||my===n){
-        budget.incomplete=true;
-        return false; // never mark a truncated view as complete
+  // A dense viewport is split into smaller independent requests. Three
+  // concurrent geometry requests avoid serial network latency without
+  // flooding the public TIGERweb service.
+  async function loadGeometry(rectangles,controller,budget,current){
+    const queue=rectangles.map(box=>({box,depth:0}));
+    const active=new Set();
+    async function fetchOne({box,depth}){
+      const url=shapeUrl(box);
+      const body=validateShapes(dataCache
+        ? await dataCache.fetchJson(url,{
+            namespace:"tigerweb-tracts-acs2024-v1",
+            ttlMs:30*24*60*60*1000,signal:controller.signal
+          })
+        : await (async()=>{
+            const response=await fetch(url,{signal:controller.signal,cache:"default",mode:"cors"});
+            if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
+            return response.json();
+          })());
+      if(controller.signal.aborted||current!==token)return;
+      if(body.features.length>MAX_TRACTS||body.exceededTransferLimit){
+        const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
+        if(depth>=MAX_DEPTH||mx===w||mx===e||my===s||my===n){
+          budget.incomplete=true;
+          return;
+        }
+        // Queue within the already requested rectangle, never outside it.
+        // Breadth-first subdivision distributes early results across the view.
+        queue.push(
+          {box:[w,s,mx,my],depth:depth+1},
+          {box:[mx,s,e,my],depth:depth+1},
+          {box:[w,my,mx,n],depth:depth+1},
+          {box:[mx,my,e,n],depth:depth+1}
+        );
+        return;
       }
-      const quadrants=[[w,s,mx,my],[mx,s,e,my],[w,my,mx,n],[mx,my,e,n]];
-      let all=true;
-      for(const child of quadrants){
-        if(controller.signal.aborted||current!==token)return false;
-        const done=await fetchShapes(child,controller,budget,depth+1,current);
-        all=done&&all;
-      }
-      if(all)rememberCovered(box);
-      return all;
+      const seen=new Set();
+      const features=body.features.filter(f=>{
+        const id=f.properties?.GEOID;
+        if(!validateGeoid(id)||seen.has(id))return false;
+        seen.add(id);return true;
+      });
+      const clipped=JSON.parse(filterFeatures(JSON.stringify({
+        type:"FeatureCollection",features
+      }),...getRegion()));
+      merge(clipped.features); // publish geometry immediately
+      rememberCovered(box);
+      budget.completed++;
     }
-    const seen=new Set();
-    const features=body.features.filter(f=>{
-      const id=f.properties?.GEOID;
-      if(!validateGeoid(id)||seen.has(id))return false;
-      seen.add(id);return true;
-    });
-    // Only work on features returned inside the selected study area.
-    const clipped=JSON.parse(filterFeatures(JSON.stringify({
-      type:"FeatureCollection",features
-    }),...getRegion()));
-    merge(clipped.features); // show outlines now, before downloading estimates
-    rememberCovered(box);
-    budget.completed++;
-    return true;
+    while((queue.length||active.size)&&current===token&&!controller.signal.aborted){
+      while(queue.length&&active.size<3&&budget.calls<MAX_GEO_CALLS){
+        const task=queue.shift();
+        budget.calls++;
+        const request=fetchOne(task);
+        active.add(request);
+        // The finally callback is side-effect only; don't create an
+        // unobserved rejecting promise by ignoring Promise.finally().
+        request.then(()=>active.delete(request),()=>active.delete(request));
+      }
+      if(!active.size)break;
+      await Promise.race(active);
+    }
+    if(queue.length)budget.incomplete=true;
   }
   function applyStats(ids,data){
     const features=[];
@@ -331,11 +345,8 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       if(missing.length){
         report("ACS: loading "+missing.length+" previously unseen geographic section(s)…");
         // Region subtraction means a pan queries only unseen pieces.
-        for(const box of missing){
-          if(current!==token||controller.signal.aborted)return;
-          const complete=await fetchShapes(box,controller,budget,0,current);
-          if(!complete&&budget.calls>=MAX_GEO_CALLS)break;
-        }
+        // Concurrent requests publish each completed rectangle immediately.
+        await loadGeometry(missing,controller,budget,current);
       }
       if(current!==token||controller.signal.aborted)return;
       if(budget.incomplete)
@@ -350,6 +361,10 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
         (statsFailed?" · some estimates delayed (retry on navigation)":""));
     }catch(error){
       if(current!==token||controller.signal.aborted)return;
+      // Abort sibling geometry requests when one source request fails.
+      // Successful regions remain retained, but late responses from this
+      // failed navigation must not overwrite the visible state.
+      controller.abort();
       abort=null;
       report("ACS: "+retained.size+" tracts retained · provider request failed: "+error.message);
     }

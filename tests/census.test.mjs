@@ -202,3 +202,46 @@ test("geometry appears before slow ACS statistics finish",async()=>{
   resolveStats();await settle();
   assert.equal(map.getSource("acs-tracts").data.features[0].properties.acs_income,85000);
 });
+
+test("dense census sections fetch in parallel with a strict three-request ceiling",async()=>{
+  const map=new FakeMap();
+  const outstanding=[];
+  const requested=[];
+  let concurrent=0, peak=0;
+  globalThis.fetch=async url=>{
+    const parsed=new URL(url);
+    if(parsed.hostname==="api.censusreporter.org")
+      return {ok:true,json:async()=>figures};
+    const bounds=parsed.searchParams.get("geometry").split(",").map(Number);
+    requested.push(bounds);
+    if(bounds[2]-bounds[0]>0.027){
+      return {ok:true,json:async()=>({type:"FeatureCollection",
+        features:Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))})};
+    }
+    concurrent++;
+    peak=Math.max(peak,concurrent);
+    return new Promise(resolve=>{
+      outstanding.push(()=>{
+        concurrent--;
+        resolve({ok:true,json:async()=>geojson});
+      });
+    });
+  };
+  const census=overlay(map);
+  census.setMetric("income");
+  await settle();
+  assert.equal(peak,3,"at most three geometry requests should run concurrently");
+  assert.equal(outstanding.length,3,"three quadrants start without waiting serially");
+  const first=outstanding.shift();
+  first();await settle();
+  assert.equal(outstanding.length,3,"replenish the worker slot when a query finishes");
+  while(outstanding.length){
+    outstanding.shift()();
+    await settle();
+  }
+  assert.equal(concurrent,0);
+  assert.equal(map.getSource("acs-tracts").data.features.length,1);
+  assert.ok(requested.length>=5);
+  assert.ok(requested.length<=24);
+  assert.ok(peak<=3,"never exceed the public service concurrency ceiling");
+});
