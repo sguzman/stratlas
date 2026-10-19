@@ -1,5 +1,6 @@
 import { createZoningOverlay } from "./zoning.js";
 import { createCensusOverlay } from "./census.js";
+import { createDataCache } from "./data-cache.js";
 import init, {
   tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox, enrich_acs_tracts
 } from "./pkg/stratlas_core.js";
@@ -113,6 +114,7 @@ async function start() {
     return {data:bytes};
   });
 
+  const dataCache=createDataCache();
   const map=new maplibregl.Map({
     container:"map",style:styleForBase(),
     center:[-118.30,34.05],zoom:9,minZoom:2,maxZoom:19,
@@ -123,6 +125,7 @@ async function start() {
   const zoning=createZoningOverlay(map,{
     getRegion:()=>region().bbox,
     filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
+    dataCache,
     onStatus:message=>$("overlay-status").textContent=message
   });
   $("zoning").addEventListener("change",event=>zoning.setEnabled(event.target.checked));
@@ -130,6 +133,7 @@ async function start() {
     getRegion:()=>region().bbox,
     filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
     enrichFeatures:enrich_acs_tracts,
+    dataCache,
     onStatus:message=>$("acs-status").textContent=message,
     legendContainer:$("acs-legend")
   });
@@ -228,6 +232,20 @@ async function start() {
     state.cartoKey=$("carto-key").value.trim();
     write("cartoKey",state.cartoKey);
     switchBase();
+  });
+  $("clear-data-cache").addEventListener("click",async()=>{
+    const control=$("clear-data-cache");
+    control.disabled=true;
+    try{
+      const ok=await dataCache.clear();
+      zoning.clearMemory();
+      census.clearMemory();
+      $("cache-status").textContent=ok
+        ? "Stored API responses removed. Current map remains visible; future requests reload."
+        : "Persistent storage unavailable. In-memory geographic responses cleared.";
+    }catch(error){
+      $("cache-status").textContent="Cache clear failed: "+error.message;
+    }finally{control.disabled=false}
   });
   $("tile-grid").addEventListener("change",event=>{
     state.showGrid=event.target.checked;

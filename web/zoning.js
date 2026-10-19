@@ -49,7 +49,7 @@ function queryUrl(b,offset) {
  * All requests are viewport intersected with selected rectangle and source
  * coverage. HTTP cache uses default browser semantics and provider headers.
  */
-export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus}) {
+export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache}) {
   let active=false, version=0, abort=null, lastQuery="", lastData=empty();
   const memory=new Map();
   function tell(message){onStatus(message)}
@@ -107,11 +107,19 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus}) {
       let results=[], limited=false;
       const seen=new Set();
       for(let page=0;page<MAX_PAGES;page++) {
-        const response=await fetch(queryUrl(bbox,page*PAGE_SIZE),{
-          cache:"default",signal:controller.signal,mode:"cors"
-        });
-        if(!response.ok)throw Error("GIS HTTP "+response.status);
-        const data=await response.json();
+        const url=queryUrl(bbox,page*PAGE_SIZE);
+        const data=dataCache
+          ? await dataCache.fetchJson(url,{
+              namespace:"la-city-zoning-v1",ttlMs:6*60*60*1000,
+              signal:controller.signal
+            })
+          : await (async()=>{
+              const response=await fetch(url,{
+                cache:"default",signal:controller.signal,mode:"cors"
+              });
+              if(!response.ok)throw Error("GIS HTTP "+response.status);
+              return response.json();
+            })();
         if(data.error)throw Error(data.error.message||"ArcGIS query error");
         if(data.type!=="FeatureCollection" || !Array.isArray(data.features))
           throw Error("GIS response was not GeoJSON");
@@ -165,5 +173,9 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus}) {
     }
     reload();
   }
-  return {setEnabled,onRegionChange:()=>{cancel();lastQuery="";if(active)reload()}};
+  return {
+    setEnabled,
+    onRegionChange:()=>{cancel();lastQuery="";if(active)reload()},
+    clearMemory:()=>{memory.clear();lastQuery=""}
+  };
 }

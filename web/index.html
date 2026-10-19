@@ -54,6 +54,8 @@
         <p class="meta">Grid computation happens in Rust/WASM. Grid lines do not request additional map tiles.</p>
         <div class="metric"><span>Tiles fetched</span><strong id="fetched">0</strong></div>
         <div class="metric"><span>Out-of-region tiles blocked</span><strong id="blocked">0</strong></div>
+        <button type="button" id="clear-data-cache">Clear cached study data</button>
+        <p id="cache-status" class="meta" aria-live="polite">API results cached locally when provider policies allow. Basemap HTTP cache is managed by the browser.</p>
       </section>
       <section class="coming">
         <h2>Data layers</h2>

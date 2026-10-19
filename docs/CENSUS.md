@@ -15,7 +15,7 @@ Disabled by default. When enabled at zoom 12+, request only the intersection of 
 
 Limit to 250 polygons. If the query exceeds this cap, refuse to show a misleading partial choropleth and tell the user to zoom closer. Only returned, valid 11-digit LA GEOIDs can trigger Census Reporter data requests, batched in groups of 40. Rust/WASM performs the authoritative tabulation join using the GEOID. Queries abort on navigation, style/region changes and disabling the layer. Metric switching does not initiate new requests.
 
-The browser retains up to eight recent geometry queries in memory and memoizes observed tract tabulations for the session. HTTP requests use normal browser caching and obey provider cache instructions; persistent caching will require a documented provider-specific policy.
+The browser retains up to eight recent geometry queries in memory and memoizes tract tabulations for the session. Optional IndexedDB persistence now caches public JSON responses at most 30 days for 2024 tract geometry and 90 days for the fixed 2020–2024 ACS release, or **less** when upstream HTTP directives require it. See [CACHE.md](CACHE.md).
 
 ## Measures and limitations
 

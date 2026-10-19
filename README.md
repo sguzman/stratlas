@@ -21,6 +21,10 @@ A Rust/WebAssembly-first geographic research map that only requests visible tile
 
 **Not yet implemented:** Elections, household wealth, land prices, and other statistical overlays. They require additional verified public API adapters; the UI does not invent datasets.
 
+## Persistent browser cache
+
+Public geographic API responses can be kept in a bounded IndexedDB cache across sessions, with each provider's HTTP caching directives respected. The Inspection section can clear Stratlas data without clearing browser tile caches. See [cache design](docs/CACHE.md).
+
 ## Local setup
 
 Requires Rust stable, the wasm32-unknown-unknown target, wasm-pack, and any local HTTP server.

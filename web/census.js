@@ -97,7 +97,7 @@ function validateGeoid(value){
   return typeof value==="string" && /^06\d{9}$/.test(value) && value.slice(2,5)==="037";
 }
 
-export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures,onStatus,legendContainer}){
+export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures,onStatus,legendContainer,dataCache}){
   let metric="off",token=0,abort=null,lastWindow="",lastData=empty();
   const windows=new Map(), tabulations=new Map();
   const report=message=>onStatus(message);
@@ -153,11 +153,19 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       let shapes=windows.get(key);
       if(!shapes){
         report("ACS: retrieving visible tract boundaries…");
-        const response=await fetch(shapeUrl(bbox),{
-          signal:controller.signal,cache:"default",mode:"cors"
-        });
-        if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
-        const body=await response.json();
+        const url=shapeUrl(bbox);
+        const body=dataCache
+          ? await dataCache.fetchJson(url,{
+              namespace:"tigerweb-tracts-acs2024-v1",
+              ttlMs:30*24*60*60*1000,signal:controller.signal
+            })
+          : await (async()=>{
+              const response=await fetch(url,{
+                signal:controller.signal,cache:"default",mode:"cors"
+              });
+              if(!response.ok)throw Error("TIGERweb HTTP "+response.status);
+              return response.json();
+            })();
         if(body.error)throw Error(body.error.message||"TIGERweb GIS error");
         if(body.type!=="FeatureCollection"||!Array.isArray(body.features))
           throw Error("TIGERweb did not return GeoJSON");
@@ -182,11 +190,19 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       if(needed.length)report("ACS: loading estimates for "+needed.length+" visible tracts…");
       for(let i=0;i<needed.length;i+=BATCH){
         const ids=needed.slice(i,i+BATCH);
-        const response=await fetch(statsUrl(ids),{
-          signal:controller.signal,cache:"default",mode:"cors"
-        });
-        if(!response.ok)throw Error("Census Reporter HTTP "+response.status);
-        const body=await response.json();
+        const url=statsUrl(ids);
+        const body=dataCache
+          ? await dataCache.fetchJson(url,{
+              namespace:"censusreporter-acs2024-5yr-v1",
+              ttlMs:90*24*60*60*1000,signal:controller.signal
+            })
+          : await (async()=>{
+              const response=await fetch(url,{
+                signal:controller.signal,cache:"default",mode:"cors"
+              });
+              if(!response.ok)throw Error("Census Reporter HTTP "+response.status);
+              return response.json();
+            })();
         if(!body.data || typeof body.data!=="object")
           throw Error("Census Reporter returned invalid statistics");
         // Cache all requested IDs, including missing ones, to avoid repeated misses.
@@ -266,5 +282,5 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     new window.maplibregl.Popup().setLngLat(event.lngLat)
       .setDOMContent(root).addTo(map);
   });
-  return {setMetric,onRegionChange:reset};
+  return {setMetric,onRegionChange:reset,clearMemory:()=>{windows.clear();tabulations.clear();lastWindow=""}};
 }
