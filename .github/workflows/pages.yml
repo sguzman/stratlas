@@ -1,0 +1,56 @@
+name: Build and deploy Stratlas
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust and wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+      - name: Check JavaScript syntax
+        run: node --check web/app.js
+      - name: Test spatial core
+        run: cargo test --workspace
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+      - name: Build WebAssembly spatial core
+        run: wasm-pack build crates/stratlas-core --release --target web --out-dir ../../web/pkg
+      - name: Verify static build files
+        run: |
+          test -f web/index.html
+          test -f web/pkg/stratlas_core.js
+          test -f web/pkg/stratlas_core_bg.wasm
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: https://sguzman.github.io/stratlas/
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

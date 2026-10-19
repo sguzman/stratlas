@@ -1,0 +1,14 @@
+[package]
+name = "stratlas-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Spatial computation engine for Stratlas WebAssembly"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde_json = "1"

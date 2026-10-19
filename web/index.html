@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111c28">
+  <title>Stratlas · Geographic research</title>
+  <meta name="description" content="Region-bounded interactive mapping, driven by Rust and WebAssembly.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.5.0/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <header>
+        <div class="eyebrow">GEOGRAPHIC RESEARCH</div>
+        <h1>Stratlas<span class="dot">.</span></h1>
+        <p>Study places through geographic layers, without downloading the world.</p>
+      </header>
+      <section>
+        <h2>Study region</h2>
+        <label for="region">Limit geographic tile requests to</label>
+        <select id="region">
+          <option value="la-county">Los Angeles County</option>
+          <option value="la-city">Los Angeles City</option>
+          <option value="california">California</option>
+          <option value="jalisco">Jalisco, Mexico</option>
+          <option value="viewport">Custom viewport</option>
+        </select>
+        <button type="button" id="capture">Use current view as region</button>
+        <p id="region-details" class="meta"></p>
+      </section>
+      <section>
+        <h2>Basemap catalog</h2>
+        <label for="basemap">Tile provider / cartography</label>
+        <select id="basemap">
+          <option value="osm">OpenStreetMap · Standard</option>
+          <option value="topo">OpenTopoMap · Terrain</option>
+          <option value="carto-voyager">CARTO · Voyager (key)</option>
+          <option value="carto-positron">CARTO · Positron (key)</option>
+          <option value="carto-dark">CARTO · Dark Matter (key)</option>
+        </select>
+        <details>
+          <summary>CARTO provider key</summary>
+          <label for="carto-key">Personal CARTO basemap API key</label>
+          <input id="carto-key" type="password" placeholder="Optional key" autocomplete="off" spellcheck="false">
+          <button id="save-key" type="button">Save in this browser</button>
+          <p class="meta">The key is used in public tile URLs. It is not a secret. No keys are committed to Git.</p>
+        </details>
+      </section>
+      <section>
+        <h2>Inspection</h2>
+        <label class="check"><input id="tile-grid" type="checkbox"> Show geographic tile grid</label>
+        <p class="meta">Grid computation happens in Rust/WASM. Grid lines do not request additional map tiles.</p>
+        <div class="metric"><span>Tiles fetched</span><strong id="fetched">0</strong></div>
+        <div class="metric"><span>Out-of-region tiles blocked</span><strong id="blocked">0</strong></div>
+      </section>
+      <section class="coming">
+        <h2>Data layers</h2>
+        <p class="meta">Census, zoning, elections, income and land prices are planned API adapters. No synthetic geographic data is displayed.</p>
+        <a href="https://github.com/sguzman/stratlas/blob/main/docs/DATA_SOURCES.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
+      </section>
+      <footer>
+        <a href="https://github.com/sguzman/stratlas" target="_blank" rel="noopener noreferrer">GitHub repository ↗</a>
+        <div>Rust spatial engine · MapLibre rendering</div>
+      </footer>
+    </aside>
+    <main>
+      <div id="map" role="application" aria-label="Interactive geographic study map"></div>
+      <div class="map-top">
+        <span id="study-name">Los Angeles County</span>
+        <span id="coordinates">—</span>
+      </div>
+      <div id="status" role="status" aria-live="polite">Loading Rust/WASM spatial engine…</div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.5.0/dist/maplibre-gl.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
