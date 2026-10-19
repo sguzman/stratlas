@@ -91,7 +91,7 @@ test("only intersecting tracts are retrieved; metric switching does not refetch"
   assert.equal(urls[1].pathname,"/1.0/data/show/acs2024_5yr");
   assert.equal(urls[1].searchParams.get("geo_ids"),"14000US06037101010");
   assert.equal(map.getSource("acs-tracts").data.features[0].properties.acs_income,85000);
-  assert.match(statuses.at(-1),/1\/1 retained tracts/);
+  assert.match(statuses.at(-1),/1\/1 visible tracts/);
   c.setMetric("population");await settle();
   assert.equal(urls.length,2);
   assert.equal(map.lastPaint.value[0],"case");
