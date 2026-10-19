@@ -50,132 +50,194 @@ function queryUrl(b,offset) {
  * coverage. HTTP cache uses default browser semantics and provider headers.
  */
 export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache}) {
-  let active=false, version=0, abort=null, lastQuery="", lastData=empty();
-  const memory=new Map();
+  let active=false, version=0, abort=null, pending="", currentKey="";
+  const windows=new Map();
+  const retained=new Map();
+  const MAX_RETAINED=12000;
+  let displayed=empty();
+
   function tell(message){onStatus(message)}
-  function cancel() {
+  function cancel(){
     version++;
-    if(abort) abort.abort();
+    abort?.abort();
     abort=null;
+    pending="";
   }
-  function putCache(key,value) {
-    memory.delete(key);memory.set(key,value);
-    if(memory.size>6)memory.delete(memory.keys().next().value);
+  function publish(){
+    const combined={type:"FeatureCollection",features:[...retained.values()]};
+    // Retain all visited source records in memory but render only records
+    // intersecting the currently selected study rectangle.
+    displayed=JSON.parse(filterFeatures(JSON.stringify(combined),...getRegion()));
+    map.getSource(SOURCE)?.setData(displayed);
   }
-  function ensureLayer() {
-    if(map.getSource(SOURCE)) return;
-    map.addSource(SOURCE,{type:"geojson",data:lastData});
-    map.addLayer({id:FILL,type:"fill",source:SOURCE,
+  function merge(features){
+    for(const f of features){
+      const id=f.properties?.OBJECTID ?? f.id;
+      if(id===undefined||id===null)continue;
+      const key=String(id);
+      retained.delete(key);
+      retained.set(key,f);
+      while(retained.size>MAX_RETAINED)retained.delete(retained.keys().next().value);
+    }
+    publish();
+  }
+  function putCache(key,features){
+    windows.delete(key);
+    windows.set(key,features);
+    if(windows.size>24)windows.delete(windows.keys().next().value);
+  }
+  function visible(value){
+    for(const layer of [FILL,LINE]){
+      if(map.getLayer(layer))map.setLayoutProperty?.(layer,"visibility",value?"visible":"none");
+    }
+  }
+  function ensureLayer(){
+    if(!map.getSource(SOURCE))map.addSource(SOURCE,{type:"geojson",data:displayed});
+    if(!map.getLayer(FILL))map.addLayer({id:FILL,type:"fill",source:SOURCE,
       paint:{"fill-color":matchColor,"fill-opacity":0.42}});
-    map.addLayer({id:LINE,type:"line",source:SOURCE,
-      paint:{"line-color":"#233645","line-opacity":0.5,"line-width":0.5}});
+    if(!map.getLayer(LINE))map.addLayer({id:LINE,type:"line",source:SOURCE,
+      paint:{"line-color":"#233645","line-opacity":0.52,"line-width":0.55}});
+    visible(active);
   }
-  function clear(message){
-    lastData=empty();lastQuery="";
-    const source=map.getSource(SOURCE);
-    if(source)source.setData(lastData);
-    tell(message);
+  async function queryBox(box,controller,budget,depth=0){
+    const key=box.map(x=>x.toFixed(5)).join(",");
+    if(windows.has(key))return {features:windows.get(key),partial:false,cached:true};
+    const rows=[], seen=new Set();
+    let capped=false;
+    for(let page=0;page<MAX_PAGES;page++){
+      if(budget.calls>=24)return {features:rows,partial:true,cached:false};
+      budget.calls++;
+      const url=queryUrl(box,page*PAGE_SIZE);
+      const data=dataCache
+        ? await dataCache.fetchJson(url,{
+            namespace:"la-city-zoning-v1",ttlMs:6*60*60*1000,
+            signal:controller.signal
+          })
+        : await (async()=>{
+            const response=await fetch(url,{cache:"default",signal:controller.signal,mode:"cors"});
+            if(!response.ok)throw Error("GIS HTTP "+response.status);
+            return response.json();
+          })();
+      if(data.error)throw Error(data.error.message||"ArcGIS query error");
+      if(data.type!=="FeatureCollection"||!Array.isArray(data.features))
+        throw Error("GIS response was not GeoJSON");
+      for(const f of data.features){
+        const id=f.properties?.OBJECTID??f.id;
+        const k=id===undefined?JSON.stringify(f.geometry):String(id);
+        if(seen.has(k))continue;
+        seen.add(k);rows.push(f);
+      }
+      if(data.features.length<PAGE_SIZE){capped=false;break}
+      capped=page===MAX_PAGES-1;
+    }
+    if(!capped){
+      putCache(key,rows);
+      return {features:rows,partial:false,cached:false};
+    }
+    // A single ArcGIS query may cap results at 2,000 records. Subdivide the
+    // *visible* bbox rather than silently treating those first 2,000 as all data.
+    if(depth>=2||budget.calls>=24)
+      return {features:rows,partial:true,cached:false};
+    const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
+    const quadrants=[[w,s,mx,my],[mx,s,e,my],[w,my,mx,n],[mx,my,e,n]];
+    const combined=new Map();
+    let partial=false;
+    for(const child of quadrants){
+      if(controller.signal.aborted)throw new DOMException("Canceled","AbortError");
+      const part=await queryBox(child,controller,budget,depth+1);
+      for(const f of part.features){
+        const id=f.properties?.OBJECTID??f.id;
+        if(id!==undefined)combined.set(String(id),f);
+      }
+      partial||=part.partial;
+    }
+    const result=[...combined.values()];
+    if(!partial)putCache(key,result);
+    return {features:result,partial,cached:false};
   }
-  async function reload() {
+  async function reload(){
     if(!active)return;
     ensureLayer();
-    if(map.getZoom()<MIN_ZOOM) {
-      cancel();clear("Zoning: zoom to level "+MIN_ZOOM+" or closer to query city polygons.");
+    if(map.getZoom()<MIN_ZOOM){
+      cancel();
+      tell("Zoning: showing "+retained.size+" retained polygons · zoom to "+MIN_ZOOM+
+        "+ to load additional detail.");
       return;
     }
     const scope=intersection(intersection(windowBounds(map),getRegion()),COVERAGE);
-    if(!scope) {
-      cancel();clear("Zoning: no Los Angeles City coverage in this view.");
+    if(!scope){
+      cancel();
+      tell("Zoning: "+retained.size+" previously loaded polygons retained · outside LA coverage.");
       return;
     }
-    // Quantize and intersect again; never query beyond region/source bounds.
-    const bbox=intersection(intersection(canonicalBounds(scope),getRegion()),COVERAGE);
-    const key=bbox.map(x=>x.toFixed(5)).join(",");
-    if(lastQuery===key && map.getSource(SOURCE))return;
+    const box=intersection(intersection(canonicalBounds(scope),getRegion()),COVERAGE);
+    const key=box.map(x=>x.toFixed(5)).join(",");
+    if((key===currentKey||key===pending)&&map.getSource(SOURCE))return;
     cancel();
-    const thisRequest=version, controller=new AbortController();
-    abort=controller;lastQuery=key;
-    if(memory.has(key)) {
-      lastData=memory.get(key);
-      const source=map.getSource(SOURCE);
-      if(source)source.setData(lastData);
-      tell("Zoning: "+lastData.features.length+" polygons · memory cache.");
+    const generation=version, controller=new AbortController();
+    abort=controller;pending=key;
+    if(windows.has(key)){
+      merge(windows.get(key));currentKey=key;pending="";
+      tell("Zoning: "+retained.size+" retained polygons · local memory (no API request).");
       return;
     }
-    tell("Zoning: querying city GIS for visible region…");
+    tell("Zoning: loading visible City Planning polygons… "+retained.size+" retained.");
     try{
-      let results=[], limited=false;
-      const seen=new Set();
-      for(let page=0;page<MAX_PAGES;page++) {
-        const url=queryUrl(bbox,page*PAGE_SIZE);
-        const data=dataCache
-          ? await dataCache.fetchJson(url,{
-              namespace:"la-city-zoning-v1",ttlMs:6*60*60*1000,
-              signal:controller.signal
-            })
-          : await (async()=>{
-              const response=await fetch(url,{
-                cache:"default",signal:controller.signal,mode:"cors"
-              });
-              if(!response.ok)throw Error("GIS HTTP "+response.status);
-              return response.json();
-            })();
-        if(data.error)throw Error(data.error.message||"ArcGIS query error");
-        if(data.type!=="FeatureCollection" || !Array.isArray(data.features))
-          throw Error("GIS response was not GeoJSON");
-        for(const feature of data.features) {
-          const id=feature.properties?.OBJECTID ?? feature.id;
-          if(id!==undefined && seen.has(id))continue;
-          if(id!==undefined)seen.add(id);
-          results.push(feature);
-        }
-        if(data.features.length<PAGE_SIZE)break;
-        if(page===MAX_PAGES-1)limited=true;
-      }
-      if(thisRequest!==version)return;
-      // Rust/WASM performs the last spatial culling pass.
+      const budget={calls:0};
+      const result=await queryBox(box,controller,budget);
+      if(generation!==version||controller.signal.aborted)return;
       const clipped=JSON.parse(filterFeatures(JSON.stringify({
-        type:"FeatureCollection",features:results
+        type:"FeatureCollection",features:result.features
       }),...getRegion()));
-      lastData=clipped;putCache(key,clipped);
-      const source=map.getSource(SOURCE);
-      if(source)source.setData(clipped);
-      tell("Zoning: "+clipped.features.length+" city polygons "+
-        (limited?"· capped at 2,000; zoom closer":"· City Planning GIS"));
+      merge(clipped.features);
+      if(!result.partial)putCache(key,clipped.features);
+      currentKey=result.partial?"":key;
+      pending="";abort=null;
+      tell("Zoning: "+retained.size+" retained polygons · "+budget.calls+
+        " provider requests"+(result.partial?" · dense area partially loaded; zoom in for more":""));
     }catch(error){
-      if(controller.signal.aborted || thisRequest!==version)return;
-      lastQuery="";
-      clear("Zoning unavailable: "+error.message);
+      if(controller.signal.aborted||generation!==version)return;
+      pending="";currentKey="";abort=null;
+      tell("Zoning: kept "+retained.size+" polygons · request failed: "+error.message);
     }
   }
   map.on("style.load",()=>{
-    cancel();lastQuery="";ensureLayer();
+    cancel();ensureLayer();publish();
     if(active)reload();
   });
   map.on("moveend",()=>{if(active)reload()});
   map.on("click",event=>{
-    if(!active || !map.getLayer(FILL))return;
+    if(!active||!map.getLayer(FILL))return;
     const features=map.queryRenderedFeatures(event.point,{layers:[FILL]});
     if(!features.length)return;
-    const props=features[0].properties||{};
+    const p=features[0].properties||{};
     const root=document.createElement("div");
     const title=document.createElement("strong");
-    title.textContent=String(props.Zoning||"Zoning designation");
+    title.textContent=String(p.Zoning||"Zoning designation");
     const sub=document.createElement("div");
-    sub.textContent=String(props.CATEGORY||"Unclassified")+" · Los Angeles City Planning";
+    sub.textContent=String(p.CATEGORY||"Unclassified")+" · Los Angeles City Planning";
     root.append(title,sub);
     new window.maplibregl.Popup().setLngLat(event.lngLat).setDOMContent(root).addTo(map);
   });
   function setEnabled(value){
     active=Boolean(value);
     if(!active){
-      cancel();clear("Zoning layer disabled.");return;
+      cancel();visible(false);
+      tell("Zoning hidden · "+retained.size+" polygons retained; toggle on to restore.");
+      return;
     }
+    ensureLayer();visible(true);
+    publish();
+    if(retained.size)tell("Zoning restored · "+retained.size+" polygons available immediately.");
     reload();
   }
   return {
     setEnabled,
-    onRegionChange:()=>{cancel();lastQuery="";if(active)reload()},
-    clearMemory:()=>{memory.clear();lastQuery=""}
+    onRegionChange:()=>{
+      cancel();currentKey="";
+      // Rendering remains geographically scoped to selected study rectangle.
+      if(active)reload();
+    },
+    clearMemory:()=>{windows.clear();currentKey="";pending=""}
   };
 }

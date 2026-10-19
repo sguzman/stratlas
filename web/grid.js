@@ -1,73 +1,95 @@
 /**
- * Region-limited XYZ / Web Mercator tile outlines.
- * Rust/WASM generates geographic grid cells. JS only binds them to MapLibre.
+ * Visible tile-grid inspector. Rust/WASM owns the Web Mercator tile bounds.
+ * Draw directly to a transparent overlay canvas so style reloads, raster
+ * tiles, and choropleth ordering can never hide the inspection grid.
+ * No map requests are initiated by this module.
  */
-const EMPTY=()=>({type:"FeatureCollection",features:[]});
-export function createGridOverlay(map,{getRegion,gridGeoJson,onStatus}) {
+const LIMIT=250;
+export function createGridOverlay(map,{getRegion,gridGeoJson,onStatus,canvas}) {
   let enabled=false;
-  function install(){
-    // style.load means the style is ready for addSource/addLayer, even when
-    // isStyleLoaded() is false while external tile requests are outstanding.
-    if(!map.getSource("study-area")){
-      map.addSource("study-area",{type:"geojson",data:EMPTY()});
+  const surface=canvas;
+  if(!surface)throw Error("Missing grid canvas");
+  const ctx=surface.getContext("2d",{alpha:true});
+  if(!ctx)throw Error("Grid canvas context unavailable");
+  function paint(){
+    surface.hidden=!enabled;
+    if(!enabled){onStatus("Grid disabled");return}
+    const width=Math.max(1,map.getContainer().clientWidth);
+    const height=Math.max(1,map.getContainer().clientHeight);
+    const ratio=Math.max(1,Math.min(2,globalThis.devicePixelRatio||1));
+    const pixelWidth=Math.round(width*ratio);
+    const pixelHeight=Math.round(height*ratio);
+    if(surface.width!==pixelWidth)surface.width=pixelWidth;
+    if(surface.height!==pixelHeight)surface.height=pixelHeight;
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.clearRect(0,0,width,height);
+    const b=map.getBounds();
+    const view=[Math.max(-180,b.getWest()),Math.max(-90,b.getSouth()),
+      Math.min(180,b.getEast()),Math.min(90,b.getNorth())];
+    if(!(view[0]<view[2]&&view[1]<view[3])){
+      onStatus("Tile grid unavailable for a wrapping viewport");return;
     }
-    if(!map.getLayer("study-area-line")){
-      map.addLayer({id:"study-area-line",type:"line",source:"study-area",
-        paint:{"line-color":"#0b86bf","line-width":2.5,"line-opacity":0.96}});
-    }
-    if(!map.getSource("tile-grid-data")){
-      map.addSource("tile-grid-data",{type:"geojson",data:EMPTY()});
-    }
-    if(!map.getLayer("tile-grid-casing")){
-      map.addLayer({id:"tile-grid-casing",type:"line",source:"tile-grid-data",
-        layout:{"visibility":"visible"},
-        paint:{"line-color":"#1b2f3d","line-opacity":0.85,"line-width":4}});
-    }
-    if(!map.getLayer("tile-grid-line")){
-      map.addLayer({id:"tile-grid-line",type:"line",source:"tile-grid-data",
-        paint:{"line-color":"#ffb448","line-opacity":1,"line-width":2.2}});
-    }
-    refresh();
-  }
-  function refresh(){
     const [w,s,e,n]=getRegion();
-    const outline={type:"Feature",properties:{},geometry:{
-      type:"Polygon",coordinates:[[[w,s],[e,s],[e,n],[w,n],[w,s]]]
-    }};
-    const border=map.getSource("study-area");
-    if(border)border.setData({type:"FeatureCollection",features:[outline]});
-    const source=map.getSource("tile-grid-data");
-    if(!source){
-      onStatus(enabled?"Waiting for map style…":"Grid disabled");
-      return;
-    }
-    if(!enabled){source.setData(EMPTY());onStatus("Grid disabled");return}
-    const bounds=map.getBounds();
-    const view=[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()];
-    const zoom=Math.max(0,Math.min(18,Math.floor(map.getZoom())));
+    let z=Math.max(0,Math.min(18,Math.floor(map.getZoom())));
+    let features=[];
     try{
-      const result=JSON.parse(gridGeoJson(
-        Math.max(-180,view[0]),Math.max(-90,view[1]),
-        Math.min(180,view[2]),Math.min(90,view[3]),
-        w,s,e,n,zoom,250
-      ));
-      if(!Array.isArray(result.features))throw Error("Invalid Rust grid output");
-      // Rust generates standard tile cell polygons; MapLibre renders their edges.
-      source.setData(result);
-      const count=result.features.length;
-      onStatus(count
-        ? "Showing "+count+" XYZ tile cells · zoom "+zoom+(count===250?" · display cap 250":"")
-        : "No grid cells intersect the visible study rectangle.");
+      for(;;){
+        const parsed=JSON.parse(gridGeoJson(...view,w,s,e,n,z,LIMIT));
+        if(!Array.isArray(parsed.features))throw Error("Rust grid returned invalid GeoJSON");
+        features=parsed.features;
+        // The Rust grid caps its result to LIMIT. Coarsen if necessary instead
+        // of drawing only a corner of an otherwise truncated viewport.
+        if(features.length<LIMIT || z===0)break;
+        z--;
+      }
+      ctx.save();
+      ctx.beginPath();ctx.rect(0,0,width,height);ctx.clip();
+      ctx.lineWidth=2;
+      ctx.strokeStyle="rgba(5,21,35,0.95)";
+      const paths=[];
+      for(const f of features){
+        const ring=f.geometry?.coordinates?.[0];
+        if(!Array.isArray(ring))continue;
+        const points=ring.map(coord=>map.project(coord));
+        paths.push(points);
+      }
+      function strokeAll(){
+        ctx.beginPath();
+        for(const points of paths){
+          if(points.length===0)continue;
+          ctx.moveTo(points[0].x,points[0].y);
+          for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);
+          ctx.closePath();
+        }
+        ctx.stroke();
+      }
+      ctx.lineWidth=4;ctx.strokeStyle="rgba(10,31,47,0.94)";strokeAll();
+      ctx.lineWidth=1.8;ctx.strokeStyle="rgba(255,195,66,0.98)";strokeAll();
+      ctx.restore();
+      onStatus(features.length
+        ?"Showing "+features.length+" tile cells · z"+z+
+          (z<Math.floor(map.getZoom())?" (coarsened for clarity)":"")
+        :"No tile cells intersect the visible study region");
     }catch(error){
-      source.setData(EMPTY());
-      onStatus("Grid error: "+error.message);
+      ctx.clearRect(0,0,width,height);
+      onStatus("Tile grid error: "+error.message);
     }
   }
-  map.on("style.load",install);
-  map.on("moveend",refresh);
+  // Keep the canvas above the map; both camera animations and resizes redraw.
+  let queued=false;
+  function schedule(){
+    if(queued||!enabled)return;
+    if(typeof globalThis.requestAnimationFrame!=="function"){paint();return}
+    queued=true;
+    globalThis.requestAnimationFrame(()=>{queued=false;paint()});
+  }
+  map.on("move",schedule);
+  map.on("resize",schedule);
+  map.on("moveend",paint);
+  map.on("style.load",paint);
   return {
-    setEnabled(value){enabled=Boolean(value);refresh()},
-    onRegionChange:refresh,
-    refresh
+    setEnabled(value){enabled=Boolean(value);paint()},
+    onRegionChange:paint,
+    refresh:paint
   };
 }

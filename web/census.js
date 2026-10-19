@@ -100,6 +100,11 @@ function validateGeoid(value){
 export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures,onStatus,legendContainer,dataCache}){
   let metric="off",token=0,abort=null,lastWindow="",lastData=empty();
   const windows=new Map(), tabulations=new Map();
+  // Retain previously visited tracts, even when the map zooms out or the
+  // user switches metrics. Bounded to avoid a giant in-memory county dump.
+  const retained=new Map();
+  const MAX_RETAINED=1600;
+  let pendingWindow="";
   const report=message=>onStatus(message);
   function cancel(){
     token++;
@@ -118,14 +123,34 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     map.addLayer({id:OUTLINE,source:SOURCE,type:"line",
       paint:{"line-color":"#243845","line-opacity":0.55,"line-width":0.55}});
   }
+  function visibility(){
+    for(const id of [FILL,OUTLINE]){
+      if(map.getLayer(id))map.setLayoutProperty?.(id,"visibility",metric==="off"?"none":"visible");
+    }
+  }
   function render(){
     if(!source())return;
     source().setData(lastData);
     if(metric!=="off" && map.getLayer(FILL))
       map.setPaintProperty(FILL,"fill-color",colorExpression(metric));
+    visibility();
   }
-  function wipe(message){
-    lastData=empty();lastWindow="";render();report(message);
+  function publish(){
+    // Retained geometry from a former region is not rendered outside the
+    // currently selected study rectangle; however, it remains in memory.
+    lastData=JSON.parse(filterFeatures(JSON.stringify({
+      type:"FeatureCollection",features:[...retained.values()]
+    }),...getRegion()));
+    render();
+  }
+  function merge(features){
+    for(const f of features){
+      const id=f.properties?.GEOID;
+      if(!id)continue;
+      retained.delete(id);retained.set(id,f);
+      while(retained.size>MAX_RETAINED)retained.delete(retained.keys().next().value);
+    }
+    publish();
   }
   function cachePut(key,features){
     windows.delete(key);windows.set(key,features);
@@ -135,20 +160,23 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     if(metric==="off")return;
     ensureLayer();
     if(map.getZoom()<MIN_ZOOM){
-      cancel();wipe("ACS: zoom to "+MIN_ZOOM+"+ to query visible census tracts.");return;
+      cancel();pendingWindow="";
+      report("ACS: "+retained.size+" retained tracts stay visible · zoom to "+
+        MIN_ZOOM+"+ to load new geography.");return;
     }
     const scope=intersect(intersect(view(map),getRegion()),COUNTY);
     if(!scope){
-      cancel();wipe("ACS: current view is outside Los Angeles County coverage.");return;
+      cancel();pendingWindow="";
+      report("ACS: "+retained.size+" previously visited tracts retained · outside LA coverage.");return;
     }
     const bbox=intersect(intersect(snap(scope),getRegion()),COUNTY);
     if(!bbox)return;
     const key=bbox.map(n=>n.toFixed(5)).join(",");
-    if(key===lastWindow && source())return;
+    if((key===lastWindow||key===pendingWindow) && source())return;
     cancel();
     const current=token;
     const controller=new AbortController();
-    abort=controller;lastWindow=key;
+    abort=controller;pendingWindow=key;
     try{
       let shapes=windows.get(key);
       if(!shapes){
@@ -183,7 +211,8 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       }
       if(current!==token)return;
       if(!shapes.features.length){
-        lastData=empty();render();report("ACS: no tracts in this view.");return;
+        lastWindow=key;pendingWindow="";
+        report("ACS: no new tracts in this view · "+retained.size+" retained.");return;
       }
       const needed=[...new Set(shapes.features.map(f=>f.properties.GEOID))]
         .filter(id=>!tabulations.has(id));
@@ -216,16 +245,18 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
         const id=feature.properties.GEOID;
         if(tabulations.get(id))data.data["14000US"+id]=tabulations.get(id);
       }
-      lastData=JSON.parse(enrichFeatures(JSON.stringify(shapes),JSON.stringify(data)));
+      const enriched=JSON.parse(enrichFeatures(JSON.stringify(shapes),JSON.stringify(data)));
       if(current!==token)return;
-      render();
+      merge(enriched.features);
+      lastWindow=key;pendingWindow="";abort=null;
       const n=lastData.features.filter(f=>f.properties?.[METRICS[metric].key]!==null
         && f.properties?.[METRICS[metric].key]!==undefined).length;
       report("ACS 2020–2024 · "+n+"/"+lastData.features.length+
-        " tracts with "+METRICS[metric].label.toLowerCase()+" data");
+        " retained tracts with "+METRICS[metric].label.toLowerCase()+" data");
     }catch(error){
       if(current!==token || controller.signal.aborted)return;
-      wipe("ACS unavailable: "+error.message);
+      pendingWindow="";
+      report("ACS: retained "+retained.size+" tracts · request failed: "+error.message);
     }
   }
   function setMetric(next){
@@ -234,24 +265,27 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     metric=next;
     legend(legendContainer,metric);
     if(metric==="off"){
-      cancel();wipe("ACS overlay disabled.");return;
+      cancel();pendingWindow="";visibility();
+      report("ACS hidden · "+retained.size+" tracts retained for instant reuse.");
+      return;
     }
-    ensureLayer();
+    ensureLayer();publish();
     if(previous!=="off" && lastData.features.length) {
-      render();
-      report("ACS 2020–2024 · "+lastData.features.length+" census tracts");
+      report("ACS 2020–2024 · "+retained.size+" retained tracts");
       return;
     }
     reload();
   }
   function reset(){
     cancel();
-    lastWindow="";lastData=empty();render();
+    lastWindow="";pendingWindow="";
+    publish();
     if(metric!=="off")reload();
   }
   map.on("style.load",()=>{
-    cancel();lastWindow="";
-    if(metric!=="off"){ensureLayer();render();reload()}
+    cancel();pendingWindow="";
+    ensureLayer();publish();
+    if(metric!=="off")reload();
   });
   map.on("moveend",()=>{if(metric!=="off")reload()});
   map.on("click",event=>{
@@ -282,5 +316,6 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     new window.maplibregl.Popup().setLngLat(event.lngLat)
       .setDOMContent(root).addTo(map);
   });
-  return {setMetric,onRegionChange:reset,clearMemory:()=>{windows.clear();tabulations.clear();lastWindow=""}};
+  return {setMetric,onRegionChange:reset,
+    clearMemory:()=>{windows.clear();tabulations.clear();lastWindow="";pendingWindow=""}};
 }

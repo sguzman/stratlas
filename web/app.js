@@ -50,7 +50,7 @@ const state={
   regionId:read("region","la-county"),
   baseId:read("basemap","osm"),
   cartoKey:read("cartoKey",""),
-  count:0, blocked:0, showGrid:false
+  count:0, blocked:0, showGrid:read("grid","false")==="true"
 };
 if (!REGIONS[state.regionId] && state.regionId!=="viewport") state.regionId="la-county";
 if (!BASES[state.baseId]) state.baseId="osm";
@@ -143,7 +143,8 @@ async function start() {
   const grid=createGridOverlay(map,{
     getRegion:()=>region().bbox,
     gridGeoJson:visible_grid_geojson,
-    onStatus:message=>$("grid-status").textContent=message
+    onStatus:message=>$("grid-status").textContent=message,
+    canvas:$("grid-canvas")
   });
   function boundsObj() {
     const b=map.getBounds();
@@ -227,20 +228,11 @@ async function start() {
   });
   $("tile-grid").addEventListener("change",event=>{
     state.showGrid=event.target.checked;
+    write("grid",String(state.showGrid));
     grid.setEnabled(state.showGrid);
   });
-  $("preview-income").addEventListener("click",()=>{
-    // Explicit opt-in demo: switch from broad regional map to a tract-scale view.
-    if(state.regionId!=="la-county"){
-      state.regionId="la-county";
-      write("region",state.regionId);
-      $("region").value=state.regionId;
-      applyRegion(false);
-    }
-    $("acs-metric").value="income";
-    census.setMetric("income");
-    map.jumpTo({center:[-118.27,34.05],zoom:13});
-  });
+  $("tile-grid").checked=state.showGrid;
+  grid.setEnabled(state.showGrid);
   map.once("load",()=>{
     applyRegion(true);
     setStatus("Rust/WASM ready · loading visible tiles within "+region().name+".");

@@ -1,71 +1,67 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-
 const src=readFileSync(new URL("../web/grid.js",import.meta.url),"utf8");
 const {createGridOverlay}=await import("data:text/javascript,"+encodeURIComponent(src));
-class MapStub{
-  constructor(){
-    this.sources=new Map();this.layers=new Map();this.events=new Map();
-    this.loaded=false;this.zoom=9;
-  }
-  isStyleLoaded(){return this.loaded}
-  addSource(id,opts){this.sources.set(id,{...opts,updates:[],
-    setData(data){this.updates.push(data)}})}
-  getSource(id){return this.sources.get(id)}
-  addLayer(layer){this.layers.set(layer.id,layer)}
-  getLayer(id){return this.layers.get(id)}
-  on(type,fn){this.events.set(type,fn)}
-  fire(type){this.events.get(type)?.()}
-  getZoom(){return this.zoom}
-  getBounds(){return {
-    getWest:()=>-118.6,getSouth:()=>33.8,
-    getEast:()=>-118.1,getNorth:()=>34.2
-  }}
-}
 const feature={type:"Feature",properties:{z:9,x:87,y:204},
   geometry:{type:"Polygon",coordinates:[[[-118.4,33.8],[-118.1,33.8],
     [-118.1,34.2],[-118.4,34.2],[-118.4,33.8]]]}};
-test("grid installs during style.load while isStyleLoaded is false",()=>{
-  const map=new MapStub(),statuses=[];
-  const layer=createGridOverlay(map,{
-    getRegion:()=>[-119,33,-117,35],
+function make(){
+  const actions=[],events=new Map();
+  const ctx={
+    setTransform(){actions.push("transform")},clearRect(){actions.push("clear")},
+    save(){actions.push("save")},restore(){actions.push("restore")},
+    beginPath(){actions.push("begin")},rect(){actions.push("rect")},
+    clip(){actions.push("clip")},moveTo(){actions.push("move")},
+    lineTo(){actions.push("line")},closePath(){actions.push("close")},
+    stroke(){actions.push("stroke")}
+  };
+  const canvas={width:0,height:0,hidden:true,getContext:()=>ctx};
+  const map={
+    on:(name,cb)=>events.set(name,cb),
+    getContainer:()=>({clientWidth:600,clientHeight:400}),
+    getBounds:()=>({getWest:()=>-118.6,getSouth:()=>33.7,
+      getEast:()=>-118.0,getNorth:()=>34.3}),
+    getZoom:()=>13,
+    project:([lng,lat])=>({x:(lng+119)*1000,y:(35-lat)*500})
+  };
+  const statuses=[];
+  const opts={getRegion:()=>[-119,33,-117,35],canvas,
     gridGeoJson:()=>JSON.stringify({type:"FeatureCollection",features:[feature]}),
-    onStatus:x=>statuses.push(x)
-  });
-  layer.setEnabled(true);
-  assert.equal(map.getSource("tile-grid-data"),undefined);
-  map.fire("style.load");
-  assert.ok(map.getSource("tile-grid-data"));
-  assert.ok(map.getLayer("tile-grid-casing"));
-  assert.ok(map.getLayer("tile-grid-line"));
-  assert.equal(map.getSource("tile-grid-data").updates.at(-1).features.length,1);
-  assert.match(statuses.at(-1),/Showing 1 XYZ tile cells/);
-  assert.equal(map.isStyleLoaded(),false,"test deliberately exercises early lifecycle");
+    onStatus:x=>statuses.push(x)};
+  return {map,canvas,actions,events,statuses,opts};
+}
+test("the grid is drawn to an independent, topmost canvas",()=>{
+  const {map,canvas,actions,statuses,opts}=make();
+  const g=createGridOverlay(map,opts);
+  g.setEnabled(true);
+  assert.equal(canvas.hidden,false);
+  assert.ok(actions.filter(x=>x==="stroke").length>=2);
+  assert.ok(actions.includes("line"));
+  assert.match(statuses.at(-1),/Showing 1 tile cells/);
+  g.setEnabled(false);
+  assert.equal(canvas.hidden,true);
 });
-test("checked grid redraws on region and style changes; unchecked empties",()=>{
-  const map=new MapStub(),statuses=[];
-  const grid=createGridOverlay(map,{
-    getRegion:()=>[-119,33,-117,35],
-    gridGeoJson:()=>JSON.stringify({type:"FeatureCollection",features:[feature]}),
-    onStatus:x=>statuses.push(x)
-  });
-  map.fire("style.load");
-  grid.setEnabled(true);
-  map.fire("moveend");
-  grid.onRegionChange();
-  assert.equal(map.getSource("tile-grid-data").updates.at(-1).features.length,1);
-  grid.setEnabled(false);
-  assert.equal(map.getSource("tile-grid-data").updates.at(-1).features.length,0);
-  assert.equal(statuses.at(-1),"Grid disabled");
+test("map movement redraws without changing the map style",()=>{
+  const {map,canvas,actions,events,opts}=make();
+  const g=createGridOverlay(map,opts);
+  g.setEnabled(true);
+  const before=actions.filter(x=>x==="stroke").length;
+  events.get("move")();
+  assert.ok(actions.filter(x=>x==="stroke").length>before);
+  events.get("style.load")();
+  assert.equal(canvas.hidden,false);
 });
-test("empty Rust grid reports a comprehensible status",()=>{
-  const map=new MapStub(),statuses=[];
-  const grid=createGridOverlay(map,{
-    getRegion:()=>[-119,33,-117,35],
-    gridGeoJson:()=>JSON.stringify({type:"FeatureCollection",features:[]}),
-    onStatus:x=>statuses.push(x)
-  });
-  map.fire("style.load");grid.setEnabled(true);
-  assert.match(statuses.at(-1),/No grid cells/);
+test("dense tile grid coarsens until all visible cells fit, never leaves a partial stripe",()=>{
+  const {map,opts,statuses}=make();
+  const seen=[];
+  opts.gridGeoJson=(...args)=>{
+    const zoom=args[8];seen.push(zoom);
+    return JSON.stringify({type:"FeatureCollection",
+      features:Array.from({length:zoom>11?250:5},()=>feature)});
+  };
+  const g=createGridOverlay(map,opts);
+  g.setEnabled(true);
+  assert.deepEqual(seen,[13,12,11]);
+  assert.match(statuses.at(-1),/coarsened/);
 });

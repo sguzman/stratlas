@@ -6,9 +6,9 @@ Rust/WebAssembly-first geographic research map. MapLibre renders the map; Rust p
 
 ## Using the map
 
-Choose a study rectangle and basemap. The XYZ tile grid outlines Web Mercator tiles at the current integer zoom (not streets or blocks).
+Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Mercator tiles above all basemaps and data overlays, using Rust/WASM geometry. Its enabled state survives reloads; at very high zoom its displayed grid level may be coarsened for clarity.
 
-**Statistical overlays are disabled by default.** For a one-click example, select **Show LA income at tract scale** in Data Layers. Los Angeles census estimates require zoom 12+; LA City zoning requires zoom 13+. Both are geographically limited pilots, not worldwide overlays. The sidebar reports loading, errors, and source coverage.
+**Statistical overlays are disabled by default.** For a one-click example, select **Show LA income at tract scale** in Data Layers. New Los Angeles census estimates load at zoom 12+; new LA City zoning loads at zoom 13+. Previously loaded features stay visible when zooming out or toggling layers back on. This is *visited-area* coverage, not a full county download. Both are geographically limited pilots. The sidebar reports loading, errors, and source coverage.
 
 ## Development
 

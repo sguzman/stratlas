@@ -23,6 +23,7 @@ class FakeMap {
   getLayer(id){return this.layers.get(id)}
   addSource(id,entry){this.sources.set(id,{...entry,setData(value){this.data=value}})}
   addLayer(entry){this.layers.set(entry.id,entry)}
+  setLayoutProperty(id,name,value){const layer=this.layers.get(id);layer.layout={...(layer.layout||{}),[name]:value}}
   on(name,callback){this.events.set(name,callback)}
   fire(name){this.events.get(name)?.({})}
 }
@@ -76,9 +77,12 @@ test("queries only viewport/region/source intersection and displays returned fea
   assert.ok(b[0]>=-118.255 && b[1]>=34.035);
   assert.ok(b[2]<=-118.235 && b[3]<=34.055);
   assert.equal(map.getSource("la-zoning-data").data.features[0].properties.Zoning,"C2");
-  assert.ok(statuses.at(-1).includes("1 city polygons"));
+  assert.match(statuses.at(-1),/1 retained polygons/);
   z.setEnabled(false);
-  assert.equal(map.getSource("la-zoning-data").data.features.length,0);
+  assert.equal(map.getSource("la-zoning-data").data.features.length,1,
+    "Disabling must preserve the already loaded polygons");
+  z.setEnabled(true);await settle();
+  assert.equal(requests.length,1,"Re-enabling the same view must not refetch");
 });
 
 test("early style.load registers zoning source before basemap tiles finish",async()=>{
@@ -89,4 +93,42 @@ test("early style.load registers zoning source before basemap tiles finish",asyn
   assert.ok(map.getSource("la-zoning-data"));
   assert.ok(map.getLayer("la-zoning-fill"));
   assert.equal(requests,0);
+});
+
+test("zooming out preserves previously loaded zoning and makes no new API calls",async()=>{
+  const map=new FakeMap(),requests=[],statuses=[];
+  globalThis.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>geojson}};
+  const overlay=create(map,[-119,33,-117,35],requests,statuses);
+  map.fire("style.load");overlay.setEnabled(true);await settle();
+  const count=requests.length;
+  map.zoom=8;map.fire("moveend");await settle();
+  assert.equal(requests.length,count);
+  assert.equal(map.getSource("la-zoning-data").data.features.length,1);
+  assert.match(statuses.at(-1),/retained polygons/);
+});
+test("dense zoning requests subdivide geographic bounds and retain deduplicated features",async()=>{
+  const map=new FakeMap(),urls=[],statuses=[];
+  globalThis.fetch=async url=>{
+    urls.push(new URL(url));
+    const bbox=new URL(url).searchParams.get("geometry").split(",").map(Number);
+    const wide=(bbox[2]-bbox[0])>0.015;
+    if(wide){
+      // A capped/overfull page of a dense initial study bbox.
+      const offset=Number(new URL(url).searchParams.get("resultOffset"));
+      return {ok:true,json:async()=>({type:"FeatureCollection",features:
+        Array.from({length:500},(_,i)=>({type:"Feature",properties:{OBJECTID:offset+i},
+          geometry:geojson.features[0].geometry}))})};
+    }
+    return {ok:true,json:async()=>geojson};
+  };
+  const overlay=create(map,[-119,33,-117,35],urls,statuses);
+  map.fire("style.load");overlay.setEnabled(true);await settle();
+  // Caller is never permitted to fetch geography outside the viewport.
+  assert.ok(urls.length>4 && urls.length<=24);
+  for(const u of urls){
+    const [w,s,e,n]=u.searchParams.get("geometry").split(",").map(Number);
+    assert.ok(w>=-118.26-.01 && e<=-118.24+.01);
+    assert.ok(s>=34.03-.01 && n<=34.06+.01);
+  }
+  assert.ok(map.getSource("la-zoning-data").data.features.length>0);
 });

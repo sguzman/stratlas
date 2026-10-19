@@ -6,13 +6,13 @@ GitHub Pages publishes only static HTML, CSS, JavaScript and wasm-pack output. M
 
 Tile intersection happens against a rectangle (west, south, east, north in WGS84 degrees). A tile intersecting the selected rectangle is shown whole, even where the raster extends slightly outside the region; the user explicitly does not need polygon clipping. MapLibre maxBounds separately restricts the camera.
 
-Rust owns geographic predicates, coordinate transforms, bounding-box area calculations, tile grid generation, and GeoJSON feature culling. JS owns the MapLibre bridge, HTTP requests, browser preferences and UI controls. Do not rewrite the GPU renderer in Rust just for its own sake.
+Rust owns geographic predicates, coordinate transforms, bounding-box area calculations, tile grid generation and GeoJSON feature culling. JS owns MapLibre rendering, HTTP requests, browser preferences and minimal browser integration. The inspection grid is drawn using a transparent canvas above the map, using tile geometry produced by Rust/WASM; it is not a data-serving layer and makes no additional requests. Canvas rendering avoids z-order and `style.load` lifecycle dependencies that previously hid the grid.
 
 ## Provider adapters
 
 Basemap registry lives in web/app.js. Future APIs use a second layer-catalog registry: metadata should include source, coverage, reference year, resolution, license, rate limits, CORS and API-key requirements. For geographic queries, request viewport intersection with region, not every location in a whole county. Bound feature counts and query density.
 
-A narrow Rust function filter_geojson_bbox is available for intersecting-feature filtering but no dataset adapter is shipped yet. It retains features whose bounding extents overlap the study rectangle; it does not perform exact polygon clipping.
+Census and zoning adapters query actual hosted public GIS/API services, use Rust/WASM for geospatial filtering and tract-statistic joins, and preserve already retrieved features during layer toggles, map-style changes and zoom-out. New requests require their source-specific detailed zoom, but existing geography is not discarded below it. Memory-retained geometry is bounded; it is not a complete county database. `filter_geojson_bbox` filters intersecting feature extents rather than clipping polygon vertices.
 
 ## Caching
 

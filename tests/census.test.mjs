@@ -19,6 +19,7 @@ class FakeMap {
   getLayer(id){return this.layers.get(id)}
   addSource(id,obj){this.sources.set(id,{...obj,setData(value){this.data=value}})}
   addLayer(layer){this.layers.set(layer.id,layer)}
+  setLayoutProperty(id,name,value){const layer=this.layers.get(id);layer.layout={...(layer.layout||{}),[name]:value}}
   setPaintProperty(id,name,value){this.lastPaint={id,name,value}}
   on(event,callback){this.events.set(event,callback)}
   fire(event){this.events.get(event)?.({})}
@@ -90,12 +91,15 @@ test("only intersecting tracts are retrieved; metric switching does not refetch"
   assert.equal(urls[1].pathname,"/1.0/data/show/acs2024_5yr");
   assert.equal(urls[1].searchParams.get("geo_ids"),"14000US06037101010");
   assert.equal(map.getSource("acs-tracts").data.features[0].properties.acs_income,85000);
-  assert.match(statuses.at(-1),/1\/1 tracts/);
+  assert.match(statuses.at(-1),/1\/1 retained tracts/);
   c.setMetric("population");await settle();
   assert.equal(urls.length,2);
   assert.equal(map.lastPaint.value[0],"case");
   c.setMetric("off");
-  assert.equal(map.getSource("acs-tracts").data.features.length,0);
+  assert.equal(map.getSource("acs-tracts").data.features.length,1,
+    "Disabling a choropleth must hide it without dropping its data");
+  c.setMetric("income");await settle();
+  assert.equal(urls.length,2,"Re-enabling same tract view must use retained estimates");
 });
 test("no partial choropleth when viewport exceeds 250 tract limit",async()=>{
   let count=0;const statuses=[];
@@ -119,4 +123,18 @@ test("early style.load registers census source before basemap tiles finish",asyn
   assert.ok(map.getSource("acs-tracts"));
   assert.ok(map.getLayer("acs-tract-fill"));
   assert.equal(requests,0);
+});
+
+test("zoom-out keeps previously visited tract estimates, with no API refetch",async()=>{
+  const map=new FakeMap(),calls=[];
+  globalThis.fetch=async url=>{
+    calls.push(url);
+    return {ok:true,json:async()=>url.includes("tigerweb")?geojson:figures};
+  };
+  const c=overlay(map);
+  c.setMetric("income");await settle();
+  assert.equal(map.getSource("acs-tracts").data.features.length,1);
+  map.zoom=9;map.fire("moveend");await settle();
+  assert.equal(map.getSource("acs-tracts").data.features.length,1);
+  assert.equal(calls.length,2);
 });
