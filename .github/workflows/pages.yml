@@ -34,18 +34,29 @@ jobs:
           node --check web/data-cache.js
           node --check web/grid.js
       - name: Test API overlay scope and lifecycle
-        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs
+        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs tests/ui-contract.test.mjs
       - name: Test spatial core
         run: cargo test --workspace
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
       - name: Build WebAssembly spatial core
         run: wasm-pack build crates/stratlas-core --release --target web --out-dir ../../web/pkg
+      - name: Stamp static browser asset versions
+        run: python3 scripts/stamp_assets.py "${GITHUB_SHA}"
       - name: Verify static build files
         run: |
           test -f web/index.html
           test -f web/pkg/stratlas_core.js
           test -f web/pkg/stratlas_core_bg.wasm
+          grep -q "app.js?v=${GITHUB_SHA}" web/index.html
+          grep -q "stratlas_core_bg.wasm?v=${GITHUB_SHA}" web/pkg/stratlas_core.js
+      - name: Headless browser startup and grid smoke test
+        run: |
+          npm install --no-save --package-lock=false playwright-core@1.56.1 maplibre-gl@5.5.0
+          python3 -m http.server 8765 --directory web >/tmp/stratlas-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          node tests/browser-smoke.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site

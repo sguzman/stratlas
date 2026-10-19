@@ -48,3 +48,8 @@ main{position:relative;min-width:0;background:#15212b}
 .grid-canvas[hidden]{display:none}
 .map-top{z-index:4;pointer-events:none}
 #status{z-index:4}
+
+/* Move vital zoom information out from underneath the MapLibre navigation buttons. */
+#zoom-level{font-weight:750;color:#ffe6b7;white-space:nowrap}
+#coordinates{margin-right:66px}
+@media(max-width:730px){#coordinates{display:none}}
