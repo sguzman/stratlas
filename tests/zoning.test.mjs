@@ -80,3 +80,13 @@ test("queries only viewport/region/source intersection and displays returned fea
   z.setEnabled(false);
   assert.equal(map.getSource("la-zoning-data").data.features.length,0);
 });
+
+test("early style.load registers zoning source before basemap tiles finish",async()=>{
+  let requests=0;globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>geojson}};
+  const map=new FakeMap({zoom:11});map.isStyleLoaded=()=>false;
+  const layer=create(map,[-119,33,-117,35],[],[]);
+  map.fire("style.load");layer.setEnabled(true);await settle();
+  assert.ok(map.getSource("la-zoning-data"));
+  assert.ok(map.getLayer("la-zoning-fill"));
+  assert.equal(requests,0);
+});

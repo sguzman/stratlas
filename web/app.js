@@ -1,5 +1,6 @@
 import { createZoningOverlay } from "./zoning.js";
 import { createCensusOverlay } from "./census.js";
+import { createGridOverlay } from "./grid.js";
 import { createDataCache } from "./data-cache.js";
 import init, {
   tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox, enrich_acs_tracts
@@ -139,43 +140,19 @@ async function start() {
   });
   $("acs-metric").addEventListener("change",event=>census.setMetric(event.target.value));
 
-  const empty=()=>({type:"FeatureCollection",features:[]});
+  const grid=createGridOverlay(map,{
+    getRegion:()=>region().bbox,
+    gridGeoJson:visible_grid_geojson,
+    onStatus:message=>$("grid-status").textContent=message
+  });
   function boundsObj() {
     const b=map.getBounds();
     return [b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
   }
-  function drawGrid() {
-    const source=map.getSource("tile-grid-data");
-    if (!source) return;
-    if (!state.showGrid) {source.setData(empty());return}
-    const [vw,vs,ve,vn]=boundsObj();
-    const [rw,rs,re,rn]=region().bbox;
-    // Avoid antimeridian-wrapping region requests.
-    const geojson=visible_grid_geojson(
-      Math.max(-180,vw),Math.max(-90,vs),Math.min(180,ve),Math.min(90,vn),
-      rw,rs,re,rn,Math.max(0,Math.min(18,Math.floor(map.getZoom()))),250
-    );
-    source.setData(JSON.parse(geojson));
-  }
-  function overlay() {
-    if (!map.isStyleLoaded()) return;
-    const [w,s,e,n]=region().bbox;
-    const outline={type:"Feature",properties:{},geometry:{
-      type:"Polygon",coordinates:[[[w,s],[e,s],[e,n],[w,n],[w,s]]]
-    }};
-    map.addSource("study-area",{type:"geojson",data:outline});
-    map.addLayer({id:"study-area-line",type:"line",source:"study-area",
-      paint:{"line-color":"#0b86bf","line-width":2.5,"line-opacity":0.95}});
-    map.addSource("tile-grid-data",{type:"geojson",data:empty()});
-    map.addLayer({id:"tile-grid-line",type:"line",source:"tile-grid-data",
-      paint:{"line-color":"#f0933d","line-opacity":0.65,"line-width":1}});
-    drawGrid();
-  }
-  map.on("style.load",overlay);
   map.on("moveend",()=>{
     const center=map.getCenter();
     $("coordinates").textContent=center.lat.toFixed(4)+"°, "+center.lng.toFixed(4)+"° · z"+map.getZoom().toFixed(1);
-    drawGrid();
+    grid.refresh();
   });
   map.on("error",evt=>{
     const message=evt.error && evt.error.message ? evt.error.message : "Unknown map error";
@@ -193,6 +170,7 @@ async function start() {
     map.setStyle(styleForBase());
     zoning.onRegionChange();
     census.onRegionChange();
+    grid.onRegionChange();
   }
   function switchBase() {
     const selected=BASES[state.baseId];
@@ -249,7 +227,19 @@ async function start() {
   });
   $("tile-grid").addEventListener("change",event=>{
     state.showGrid=event.target.checked;
-    drawGrid();
+    grid.setEnabled(state.showGrid);
+  });
+  $("preview-income").addEventListener("click",()=>{
+    // Explicit opt-in demo: switch from broad regional map to a tract-scale view.
+    if(state.regionId!=="la-county"){
+      state.regionId="la-county";
+      write("region",state.regionId);
+      $("region").value=state.regionId;
+      applyRegion(false);
+    }
+    $("acs-metric").value="income";
+    census.setMetric("income");
+    map.jumpTo({center:[-118.27,34.05],zoom:13});
   });
   map.once("load",()=>{
     applyRegion(true);

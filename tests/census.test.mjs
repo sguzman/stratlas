@@ -111,3 +111,12 @@ test("no partial choropleth when viewport exceeds 250 tract limit",async()=>{
   assert.match(statuses.at(-1),/Too many tracts/);
   assert.equal(map.getSource("acs-tracts").data.features.length,0);
 });
+
+test("early style.load registers census source before basemap tiles finish",async()=>{
+  let requests=0;globalThis.fetch=async()=>{requests++;throw Error("unexpected")};
+  const map=new FakeMap({zoom:11});map.isStyleLoaded=()=>false;
+  const layer=overlay(map);map.fire("style.load");layer.setMetric("income");await settle();
+  assert.ok(map.getSource("acs-tracts"));
+  assert.ok(map.getLayer("acs-tract-fill"));
+  assert.equal(requests,0);
+});

@@ -110,7 +110,7 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
     return map.getSource(SOURCE);
   }
   function ensureLayer(){
-    if(!map.isStyleLoaded()||source())return;
+    if(source())return;
     map.addSource(SOURCE,{type:"geojson",data:lastData});
     map.addLayer({id:FILL,source:SOURCE,type:"fill",
       paint:{"fill-color":colorExpression(metric==="off"?"income":metric),

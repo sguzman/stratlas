@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "purpose": "Source provenance, permissions and delivery status; not evidence of end-to-end live browser QA.",
+  "sources": [
+    {
+      "id": "osm",
+      "type": "basemap",
+      "name": "OpenStreetMap Standard",
+      "endpoint": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "status": "implemented",
+      "coverage": "global",
+      "date": "updated continuously",
+      "attribution": "© OpenStreetMap contributors",
+      "license": "ODbL data; tile policy applies",
+      "policy": "https://operations.osmfoundation.org/policies/tiles/",
+      "credentials": "none",
+      "cache": "normal HTTP cache; no prefetch"
+    },
+    {
+      "id": "opentopomap",
+      "type": "basemap",
+      "name": "OpenTopoMap",
+      "endpoint": "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+      "status": "implemented",
+      "coverage": "global, partial",
+      "date": "updated by provider",
+      "attribution": "© OpenTopoMap / OpenStreetMap / SRTM",
+      "license": "CC BY-SA",
+      "policy": "https://opentopomap.org/",
+      "credentials": "none",
+      "cache": "normal HTTP cache; no prefetch"
+    },
+    {
+      "id": "carto-voyager",
+      "type": "basemap",
+      "name": "CARTO Voyager",
+      "endpoint": "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+      "status": "implemented-key-required",
+      "coverage": "global, partial",
+      "date": "provider managed",
+      "attribution": "© CARTO / © OpenStreetMap contributors",
+      "policy": "https://carto.com/attributions",
+      "credentials": "user-supplied basemap key",
+      "cache": "normal HTTP cache"
+    },
+    {
+      "id": "carto-positron",
+      "type": "basemap",
+      "name": "CARTO Positron",
+      "endpoint": "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      "status": "implemented-key-required",
+      "coverage": "global, partial",
+      "date": "provider managed",
+      "attribution": "© CARTO / © OpenStreetMap contributors",
+      "policy": "https://carto.com/attributions",
+      "credentials": "user-supplied basemap key",
+      "cache": "normal HTTP cache"
+    },
+    {
+      "id": "carto-dark",
+      "type": "basemap",
+      "name": "CARTO Dark Matter",
+      "endpoint": "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      "status": "implemented-key-required",
+      "coverage": "global, partial",
+      "date": "provider managed",
+      "attribution": "© CARTO / © OpenStreetMap contributors",
+      "policy": "https://carto.com/attributions",
+      "credentials": "user-supplied basemap key",
+      "cache": "normal HTTP cache"
+    },
+    {
+      "id": "la-zoning",
+      "type": "feature-api",
+      "name": "LA City Department of City Planning zoning",
+      "endpoint": "https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15/query",
+      "metadata": "https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Los Angeles City; visible study area",
+      "date": "live mutable dataset",
+      "fields": [
+        "OBJECTID",
+        "Zoning",
+        "CATEGORY"
+      ],
+      "attribution": "City of Los Angeles, Department of City Planning",
+      "policy": "Hosted ArcGIS FeatureServer; observe endpoint terms and response headers",
+      "credentials": "none",
+      "cache": "up to six hours unless response directives restrict",
+      "min_zoom": 13,
+      "limits": "Maximum 2,000 polygons, zoom closer if truncated"
+    },
+    {
+      "id": "tiger-tracts",
+      "type": "feature-api",
+      "name": "U.S. Census Bureau TIGERweb 2024 census tracts",
+      "endpoint": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_ACS2024/MapServer/8/query",
+      "metadata": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_ACS2024/MapServer/8",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Pilot: Los Angeles County; visible study area",
+      "date": "January 2024 vintage",
+      "fields": [
+        "GEOID",
+        "BASENAME",
+        "STATE",
+        "COUNTY"
+      ],
+      "attribution": "U.S. Census Bureau",
+      "policy": "https://www.census.gov/data/developers/about/terms-of-service.html",
+      "credentials": "none for current geographic endpoint",
+      "cache": "up to 30 days unless response directives restrict",
+      "min_zoom": 12,
+      "limits": "250 visible tracts maximum"
+    },
+    {
+      "id": "acs2024",
+      "type": "statistics-api",
+      "name": "Census Reporter 2020–2024 ACS five-year tabulations",
+      "endpoint": "https://api.censusreporter.org/1.0/data/show/acs2024_5yr",
+      "metadata": "https://github.com/censusreporter/census-api/blob/master/API.md",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Pilot: visible Los Angeles County tract GEOIDs",
+      "date": "2020–2024 estimates",
+      "fields": [
+        "B19013_001",
+        "B01001_001",
+        "B01001_026",
+        "B03002_001",
+        "B03002_012",
+        "B03002_003"
+      ],
+      "attribution": "U.S. Census Bureau ACS estimates via Census Reporter",
+      "policy": "https://github.com/censusreporter/census-api",
+      "credentials": "none in current adapter",
+      "cache": "up to 90 days unless response directives restrict",
+      "limits": "Sampling uncertainty and suppressed estimates; income is not net wealth"
+    },
+    {
+      "id": "la-geohub",
+      "type": "candidate",
+      "name": "Los Angeles GeoHub",
+      "metadata": "https://geohub.lacity.org/",
+      "status": "research-only",
+      "coverage": "Los Angeles"
+    },
+    {
+      "id": "la-county-planning",
+      "type": "candidate",
+      "name": "LA County Planning GIS",
+      "metadata": "https://planning.lacounty.gov/maps-and-gis/gis-data/",
+      "status": "research-only",
+      "coverage": "Los Angeles County"
+    },
+    {
+      "id": "inegi-census",
+      "type": "candidate",
+      "name": "INEGI 2020 census",
+      "metadata": "https://www.inegi.org.mx/programas/ccpv/2020/",
+      "status": "research-only",
+      "coverage": "Mexico",
+      "date": "2020"
+    },
+    {
+      "id": "ine-elections",
+      "type": "candidate",
+      "name": "INE election results",
+      "metadata": "https://www.ine.mx/voto-y-elecciones/resultados-electorales/",
+      "status": "research-only",
+      "coverage": "Mexico",
+      "date": "election-specific"
+    },
+    {
+      "id": "usgs-topo",
+      "type": "candidate",
+      "name": "USGS 3DEP",
+      "metadata": "https://www.usgs.gov/3d-elevation-program",
+      "status": "research-only",
+      "coverage": "United States"
+    }
+  ]
+}

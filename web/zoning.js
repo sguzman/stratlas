@@ -63,7 +63,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     if(memory.size>6)memory.delete(memory.keys().next().value);
   }
   function ensureLayer() {
-    if(!map.isStyleLoaded() || map.getSource(SOURCE)) return;
+    if(map.getSource(SOURCE)) return;
     map.addSource(SOURCE,{type:"geojson",data:lastData});
     map.addLayer({id:FILL,type:"fill",source:SOURCE,
       paint:{"fill-color":matchColor,"fill-opacity":0.42}});

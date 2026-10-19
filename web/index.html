@@ -50,8 +50,9 @@
       </section>
       <section>
         <h2>Inspection</h2>
-        <label class="check"><input id="tile-grid" type="checkbox"> Show geographic tile grid</label>
-        <p class="meta">Grid computation happens in Rust/WASM. Grid lines do not request additional map tiles.</p>
+        <label class="check"><input id="tile-grid" type="checkbox"> Show XYZ map tile grid</label>
+        <p class="meta">Orange lines outline the actual Web Mercator tile cells at the current integer zoom. This does not draw city blocks or trigger tile downloads.</p>
+        <p id="grid-status" class="meta" role="status">Grid disabled</p>
         <div class="metric"><span>Tiles fetched</span><strong id="fetched">0</strong></div>
         <div class="metric"><span>Out-of-region tiles blocked</span><strong id="blocked">0</strong></div>
         <button type="button" id="clear-data-cache">Clear cached study data</button>
@@ -72,8 +73,10 @@
         </select>
         <div id="acs-legend" aria-label="Census thematic map legend"></div>
         <p id="acs-status" class="meta" aria-live="polite">Off · ACS 2020–2024 · Census Reporter / TIGERweb · zoom 12+</p>
+        <button type="button" id="preview-income">Show LA income at tract scale (zoom 13)</button>
+        <p class="meta">Overlays start OFF, and require zoom 12+ (Census) or 13+ (zoning). Enable a layer to query real data. If an API fails, its status appears above. Other regions currently have basemaps but not demographic overlays.</p>
         <p class="meta">Election results, household wealth, and land prices remain planned. No synthetic data.</p>
-        <a href="https://github.com/sguzman/stratlas/blob/main/docs/DATA_SOURCES.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
+        <a href="https://github.com/sguzman/stratlas/blob/main/docs/sources/README.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
       </section>
       <footer>
         <a href="https://github.com/sguzman/stratlas" target="_blank" rel="noopener noreferrer">GitHub repository ↗</a>
