@@ -8,9 +8,11 @@ const LIMIT=250;
 export function createGridOverlay(map,{getRegion,gridGeoJson,onStatus,canvas}) {
   let enabled=false;
   const surface=canvas;
-  if(!surface)throw Error("Missing grid canvas");
-  const ctx=surface.getContext("2d",{alpha:true});
-  if(!ctx)throw Error("Grid canvas context unavailable");
+  const ctx=surface?.getContext?.("2d",{alpha:true});
+  if(!ctx){
+    onStatus("Grid unavailable: canvas is not supported. Map remains usable.");
+    return {setEnabled(){},onRegionChange(){},refresh(){}};
+  }
   function paint(){
     surface.hidden=!enabled;
     if(!enabled){onStatus("Grid disabled");return}

@@ -140,17 +140,40 @@ async function start() {
   });
   $("acs-metric").addEventListener("change",event=>census.setMetric(event.target.value));
 
+  // Defensive compatibility during rolling Pages/browser-cache updates:
+  // one missing optional UI element must never prevent the whole map starting.
+  function findOrCreateGridCanvas(){
+    let canvas=$("grid-canvas");
+    if(!canvas){
+      canvas=document.createElement("canvas");
+      canvas.id="grid-canvas";
+      canvas.className="grid-canvas";
+      canvas.hidden=true;
+      canvas.setAttribute("aria-hidden","true");
+      $("map").insertAdjacentElement("afterend",canvas);
+      console.warn("Stratlas repaired a missing grid canvas from an older HTML shell");
+    }
+    return canvas;
+  }
   const grid=createGridOverlay(map,{
     getRegion:()=>region().bbox,
     gridGeoJson:visible_grid_geojson,
     onStatus:message=>$("grid-status").textContent=message,
-    canvas:$("grid-canvas")
+    canvas:findOrCreateGridCanvas()
   });
   function boundsObj() {
     const b=map.getBounds();
     return [b.getWest(),b.getSouth(),b.getEast(),b.getNorth()];
   }
+  function updateZoom(){
+    const level=map.getZoom();
+    const label=$("zoom-level");
+    if(label)label.textContent="Zoom "+level.toFixed(1);
+  }
+  updateZoom();
+  map.on("zoom",updateZoom);
   map.on("moveend",()=>{
+    updateZoom();
     const center=map.getCenter();
     $("coordinates").textContent=center.lat.toFixed(4)+"°, "+center.lng.toFixed(4)+"° · z"+map.getZoom().toFixed(1);
     grid.refresh();
