@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "mode": "descriptive_templates_only",
+  "explanation": "A blueprint is a task pattern, not an enqueued task or permission to work. Only an explicitly requested specimen queue process may instantiate task records.",
+  "blueprints": [
+    {
+      "queue": "boundary-and-identity",
+      "deliverable": "Metro definition, official source for boundaries and constituent jurisdictions, dated geographic identifiers, supported study bounds.",
+      "capability_ids": [
+        "metro_identity_and_boundaries"
+      ]
+    },
+    {
+      "queue": "source-discovery",
+      "deliverable": "Find official permissible API endpoints, policy/attribution, coverage, vintages, access and ID systems for each capability.",
+      "capability_ids": [
+        "basemaps",
+        "zoning_and_land_use",
+        "population_and_demographics",
+        "household_income",
+        "parcels_and_cadastre",
+        "land_and_improvement_assessments"
+      ]
+    },
+    {
+      "queue": "ontology-and-measurements",
+      "deliverable": "Source-to-place and source-to-dataset mappings, measure meanings, join rules, identifiers, units, dates, and unavailable-data notes.",
+      "capability_ids": [
+        "metro_identity_and_boundaries",
+        "zoning_and_land_use",
+        "population_and_demographics",
+        "household_income",
+        "parcels_and_cadastre",
+        "land_and_improvement_assessments"
+      ]
+    },
+    {
+      "queue": "data-integration",
+      "deliverable": "Browser-source adapters constrained by study area, source policy, cache permission, pagination and safe rate limits.",
+      "capability_ids": [
+        "basemaps",
+        "zoning_and_land_use",
+        "population_and_demographics",
+        "household_income",
+        "parcels_and_cadastre",
+        "land_and_improvement_assessments",
+        "retrieval_caching_and_qa"
+      ]
+    },
+    {
+      "queue": "map-presentation",
+      "deliverable": "Map controls, layer legends, opacity/highlights, missingness and temporal labels for required available capabilities.",
+      "capability_ids": [
+        "basemaps",
+        "metro_identity_and_boundaries",
+        "zoning_and_land_use",
+        "population_and_demographics",
+        "household_income",
+        "parcels_and_cadastre",
+        "land_and_improvement_assessments"
+      ]
+    },
+    {
+      "queue": "verification-and-provenance",
+      "deliverable": "Unit/browser QA, real-provider verification, public-text audit, source permissions and documentation of partial coverage.",
+      "capability_ids": [
+        "basemaps",
+        "metro_identity_and_boundaries",
+        "zoning_and_land_use",
+        "population_and_demographics",
+        "household_income",
+        "parcels_and_cadastre",
+        "land_and_improvement_assessments",
+        "retrieval_caching_and_qa"
+      ]
+    }
+  ]
+}

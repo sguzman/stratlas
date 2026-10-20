@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "title": "Metropolitan specimen common capability contract",
+  "scope": "Each named metropolitan area is a first-class specimen independent of any administrative study rectangle.",
+  "completeness_statuses": [
+    "not_started",
+    "planned",
+    "source_research",
+    "implemented_unverified",
+    "browser_verified",
+    "partial",
+    "blocked",
+    "unavailable"
+  ],
+  "capabilities": [
+    {
+      "id": "basemaps",
+      "title": "Reference map and optional physical context",
+      "required": true,
+      "la_sources": [
+        "osm",
+        "opentopomap",
+        "usgs-topo",
+        "usgs-relief",
+        "usgs-imagery",
+        "carto-voyager",
+        "carto-positron",
+        "carto-dark"
+      ],
+      "expected": "Region-bounded raster map selection, attribution and optional terrain imagery; geographic coverage documented per provider.",
+      "display": "Selectable basemap with source attribution"
+    },
+    {
+      "id": "metro_identity_and_boundaries",
+      "title": "Metro identity and official area definition",
+      "required": true,
+      "la_sources": [],
+      "expected": "Stable metro identity, constituent jurisdiction references and an authority/vintage for any official metro delimitation. A camera rectangle is never an authoritative boundary.",
+      "display": "Named specimen with map study extent; explicit boundary status"
+    },
+    {
+      "id": "zoning_and_land_use",
+      "title": "Planning designations and zoning",
+      "required": true,
+      "la_sources": [
+        "la-zoning"
+      ],
+      "expected": "Source-provided land zoning/land-use categories with jurisdiction-specific definitions, dates, and completeness limits.",
+      "display": "Categorical polygon overlay, legend, opacity and category highlighting"
+    },
+    {
+      "id": "population_and_demographics",
+      "title": "Population and demographic geography",
+      "required": true,
+      "la_sources": [
+        "tiger-tracts",
+        "acs2024"
+      ],
+      "expected": "Statistical geography, population totals, sex breakdown and race/ethnicity where locally appropriate and measured. Maintain denominator, vintage and uncertainty.",
+      "display": "Tract or local-equivalent choropleths, legends and queryable estimates"
+    },
+    {
+      "id": "household_income",
+      "title": "Household income and inequality context",
+      "required": true,
+      "la_sources": [
+        "tiger-tracts",
+        "acs2024"
+      ],
+      "expected": "Income estimates by documented geographic unit; never mislabel income as wealth or omit suppression and uncertainty.",
+      "display": "Income map with fixed scales, units, survey period and missing values"
+    },
+    {
+      "id": "parcels_and_cadastre",
+      "title": "Parcel geometry and identifiers",
+      "required": true,
+      "la_sources": [
+        "lacounty-assessor-parcels"
+      ],
+      "expected": "Source-backed cadastral/assessor polygons, scoped stable identifiers, coverage, and vintage. Do not request personal owner data.",
+      "display": "Visible-area parcel boundaries and source IDs"
+    },
+    {
+      "id": "land_and_improvement_assessments",
+      "title": "Land and improvement assessments",
+      "required": true,
+      "la_sources": [
+        "lacounty-assessor-parcels"
+      ],
+      "expected": "Where offered, distinct assessed land/improvement values and tax roll year. Never represent assessed values as current sale or market prices.",
+      "display": "Fixed assessed-value bands, opacity, legend and factual parcel popup"
+    },
+    {
+      "id": "retrieval_caching_and_qa",
+      "title": "Geographic retrieval, caching and verifiability",
+      "required": true,
+      "la_sources": [],
+      "expected": "Viewport/pilot-bounded API calls, limited concurrency, policy-respecting cache, failure recovery, source registry, unit and live-browser checks.",
+      "display": "Loading/coverage/error state with documented data source provenance"
+    }
+  ],
+  "optional_future_capabilities": [
+    {
+      "id": "electoral_results",
+      "title": "Election result geography",
+      "state": "not_implemented_for_los_angeles"
+    },
+    {
+      "id": "elevation_values",
+      "title": "Queryable numeric elevation",
+      "state": "not_implemented_for_los_angeles"
+    },
+    {
+      "id": "market_transactions",
+      "title": "Actual property sales/transactions",
+      "state": "not_implemented_for_los_angeles"
+    },
+    {
+      "id": "household_wealth",
+      "title": "Household net worth or validated wealth proxies",
+      "state": "not_implemented_for_los_angeles"
+    },
+    {
+      "id": "infrastructure_and_mobility",
+      "title": "Infrastructure, transit and transport geography",
+      "state": "not_implemented_for_los_angeles"
+    }
+  ],
+  "provenance_requirements": [
+    "source_catalog_id",
+    "original_provider",
+    "endpoint_or_discovery_url",
+    "license_and_access",
+    "source_coverage",
+    "geography_identifier",
+    "data_vintage",
+    "units_and_denominators_if_applicable",
+    "measurement_semantics",
+    "cache_policy",
+    "QA_evidence",
+    "capability_status"
+  ],
+  "consistency_rules": [
+    "Every metro is evaluated against all required capability IDs.",
+    "Same feature meaning and evidence standard, not forced identical providers or measurement methods.",
+    "Document partial geographic coverage and unavailable data explicitly.",
+    "Metro study bounds cannot be mistaken for an authoritative metro delimitation.",
+    "No specimen queue mutation implies source downloads or downstream task execution."
+  ]
+}

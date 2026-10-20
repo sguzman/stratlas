@@ -55,6 +55,12 @@ Thresholds govern **new retrieval**, not the display of already loaded data. All
 
 ACS income is **not wealth**; tract aggregates are not individual attributes. Assessor land values are **tax-roll assessments, not market prices**. Shaded-relief images visually depict terrain but do not provide queryable numerical elevations.
 
+## Metropolitan specimens and authorization
+
+Metropolitan areas are repeatable geographic research specimens, with a shared [capability matrix](../metropolises/STANDARD.md) and metropolitan specimen records under [docs/metropolises/](../metropolises/). A specimen may span several legal jurisdictions and source coverages; the ontology retains those separate geographic meanings. Los Angeles is the existing pilot, but its metro boundary is not yet formally delineated.
+
+Specimen intake and downstream execution are separate: adding a metropolitan specimen to the [specimen queue](../queues/specimens.json) never instantiates tasks or runs source adapters; processing that queue item only creates tasks in the appropriate [downstream queues](../queues/tasks.json), with subsequent work requiring explicit authorization. The [queue policy](../queues/README.md), [constitution](../../CONSTITUTION.md) and [agent instructions](../../AGENTS.md) apply.
+
 ## Maintenance
 
 Add any source to the authoritative [catalog](../sources/catalog.json) before creating its ontology binding. Every catalog source has exactly one binding. Candidates remain not_connected and have no runtime module or dataset instantiated. An implemented layer declares its source IDs, identity namespace, place/feature type, minimum zoom, measures and any statistical join. Never invent missing records or mark future sources as downloaded.

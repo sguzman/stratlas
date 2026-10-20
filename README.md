@@ -24,6 +24,8 @@ Open http://localhost:8080/. GitHub Actions deploys updates from main.
 
 ## Reference
 
+- [Constitution](CONSTITUTION.md) · [Agent guide](AGENTS.md)
+- [Metropolitan specimen standard](docs/metropolises/STANDARD.md) · [specimen and work queues](docs/queues/README.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Place and data-source ontology](docs/ontology/README.md) · [machine-readable source/layer bindings](docs/ontology/sources.json)
 - [Source registry](docs/sources/README.md) and [machine-readable data source catalog](docs/sources/catalog.json)

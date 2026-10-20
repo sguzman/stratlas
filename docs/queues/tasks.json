@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "meaning": "No downstream work has been instantiated; queues are not self-executing.",
+  "queues": {
+    "boundary-and-identity": [],
+    "source-discovery": [],
+    "ontology-and-measurements": [],
+    "data-integration": [],
+    "map-presentation": [],
+    "verification-and-provenance": []
+  }
+}

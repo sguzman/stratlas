@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "specimen_id": "metro:us:ca:los-angeles",
+  "display_name": "Los Angeles metropolitan area",
+  "kind": "metropolitan_area",
+  "country": "United States",
+  "state_or_region": "California",
+  "place_references": [
+    "place:us:ca:los-angeles-city",
+    "place:us:ca:los-angeles-county"
+  ],
+  "scope_status": "metro_definition_pending",
+  "authoritative_metropolitan_boundary": null,
+  "boundary_note": "Current map has LA City and LA County approximate study rectangles. Neither is an authoritative metropolitan boundary, and the present pilot does not establish full metropolitan coverage.",
+  "existing_pilot": true,
+  "existing_work_note": "Already implemented source adapters and map controls are documented below. This record does not certify processing of the specimen queue or create downstream tasks.",
+  "source_catalog": "../sources/catalog.json",
+  "ontology": "../ontology/README.md",
+  "capability_standard": "standard.json",
+  "capabilities": [
+    {
+      "id": "basemaps",
+      "status": "partial",
+      "source_ids": [
+        "osm",
+        "opentopomap",
+        "usgs-topo",
+        "usgs-relief",
+        "usgs-imagery",
+        "carto-voyager",
+        "carto-positron",
+        "carto-dark"
+      ],
+      "notes": "Selectable map sources work; USGS maps are U.S.-focused, CARTO key-dependent, and coverage varies."
+    },
+    {
+      "id": "metro_identity_and_boundaries",
+      "status": "partial",
+      "source_ids": [],
+      "notes": "Los Angeles City and County exist as named study windows; metropolitan delineation and municipality membership remain unverified."
+    },
+    {
+      "id": "zoning_and_land_use",
+      "status": "partial",
+      "source_ids": [
+        "la-zoning"
+      ],
+      "notes": "LA City Planning polygons are live-browser verified for the city provider. Other metropolitan zoning jurisdictions are not covered."
+    },
+    {
+      "id": "population_and_demographics",
+      "status": "implemented_unverified",
+      "source_ids": [
+        "tiger-tracts",
+        "acs2024"
+      ],
+      "notes": "Tract geometry and 2020–2024 ACS demographics are wired for the LA County pilot; independent live Census browser QA remains pending."
+    },
+    {
+      "id": "household_income",
+      "status": "implemented_unverified",
+      "source_ids": [
+        "tiger-tracts",
+        "acs2024"
+      ],
+      "notes": "ACS median household income is wired for LA County tracts; not wealth, and live Census browser QA remains pending."
+    },
+    {
+      "id": "parcels_and_cadastre",
+      "status": "partial",
+      "source_ids": [
+        "lacounty-assessor-parcels"
+      ],
+      "notes": "LA County assessor parcel geometry is browser verified; a wider metropolitan-area jurisdiction audit remains pending."
+    },
+    {
+      "id": "land_and_improvement_assessments",
+      "status": "partial",
+      "source_ids": [
+        "lacounty-assessor-parcels"
+      ],
+      "notes": "The County provider exposes source roll years and assessed land/improvement values. Not sale prices or current market valuation."
+    },
+    {
+      "id": "retrieval_caching_and_qa",
+      "status": "partial",
+      "source_ids": [],
+      "notes": "Runtime has bounded query/caching, Rust/WASM and live browser checks for zoning, parcels and USGS. Census live QA and metro-wide coverage remain pending."
+    }
+  ],
+  "planned_solely_by_standard": [
+    "electoral_results",
+    "elevation_values",
+    "market_transactions",
+    "household_wealth",
+    "infrastructure_and_mobility"
+  ],
+  "completion_claim": "Existing LA pilot, not complete metropolitan coverage",
+  "last_reviewed": "2026-10-20"
+}
