@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "name": "Stratlas geographic knowledge vocabulary",
+  "scope": "Metadata model only: no geospatial datasets, polygons, source responses or cached tile content are committed.",
+  "entity_types": [
+    {
+      "id": "place",
+      "meaning": "Named geographic entity with a stable identity; not interchangeable with a map rectangle."
+    },
+    {
+      "id": "study_window",
+      "meaning": "WGS84 bounding rectangle used to bound requests, not an authoritative administrative boundary."
+    },
+    {
+      "id": "spatial_feature",
+      "meaning": "Provider-identified geometry representing a tract, land parcel or zoning feature."
+    },
+    {
+      "id": "observation",
+      "meaning": "A measurement or classification attached to a spatial feature, with units, vintage, method and source."
+    },
+    {
+      "id": "dataset",
+      "meaning": "A provider-maintained collection of spatial features, tabulations, or raster tile images."
+    },
+    {
+      "id": "source",
+      "meaning": "A publisher-accessible API, service or discovery portal described by a catalog ID."
+    },
+    {
+      "id": "map_layer",
+      "meaning": "Presentation of source data as a basemap, fill, line, label or thematic choropleth."
+    }
+  ],
+  "place_types": [
+    {
+      "id": "country",
+      "meaning": "Sovereign-state geographic concept; geometry requires an authority and vintage."
+    },
+    {
+      "id": "state_or_province",
+      "meaning": "First-order administrative unit such as California or Jalisco."
+    },
+    {
+      "id": "county",
+      "meaning": "County-level administrative unit; Los Angeles County is a study preset."
+    },
+    {
+      "id": "municipality",
+      "meaning": "City or equivalent local administrative jurisdiction; Los Angeles City is a study preset."
+    },
+    {
+      "id": "census_tract",
+      "meaning": "Statistical enumeration geography with a vintage and provider GEOID."
+    },
+    {
+      "id": "cadastral_parcel",
+      "meaning": "Assessor parcel feature identified inside a source, not a household or person."
+    },
+    {
+      "id": "zoning_feature",
+      "meaning": "Planning-designation polygon, which may overlap or relate to parcels."
+    },
+    {
+      "id": "electoral_district",
+      "meaning": "Future election aggregation geography; no electoral layer is currently implemented."
+    },
+    {
+      "id": "web_mercator_tile",
+      "meaning": "Rendering cell keyed by integer z/x/y, not a political or administrative place."
+    }
+  ],
+  "source_kinds": [
+    {
+      "id": "raster_basemap",
+      "meaning": "Rendered tile pictures for cartographic context, not queryable per-pixel semantic facts."
+    },
+    {
+      "id": "vector_feature_api",
+      "meaning": "API for spatial features and source attributes (e.g. ArcGIS GeoJSON)."
+    },
+    {
+      "id": "statistical_tabulation_api",
+      "meaning": "Aggregate statistics keyed to published geography IDs; can be joined to features."
+    },
+    {
+      "id": "discovery_candidate",
+      "meaning": "Potential portal or provider with no wired application adapter or validated endpoint."
+    }
+  ],
+  "delivery_kinds": [
+    {
+      "id": "xyz_raster_tile",
+      "meaning": "Browser-requested z/x/y raster tile URL."
+    },
+    {
+      "id": "arcgis_cached_tile",
+      "meaning": "Cached ArcGIS MapServer tiles in z/y/x URL order."
+    },
+    {
+      "id": "arcgis_geojson",
+      "meaning": "ArcGIS feature IDs and selected GeoJSON geometries/attributes."
+    },
+    {
+      "id": "tabulation_json",
+      "meaning": "Structured aggregate estimates keyed to an external geography ID."
+    },
+    {
+      "id": "not_connected",
+      "meaning": "No runtime endpoint is connected; catalog entry is research only."
+    }
+  ],
+  "time_models": [
+    {
+      "id": "provider_updated",
+      "meaning": "Service content can change independently of app releases; per-feature dates may differ."
+    },
+    {
+      "id": "fixed_geography_vintage",
+      "meaning": "Geometry boundaries refer to a specific named release."
+    },
+    {
+      "id": "survey_period",
+      "meaning": "Sample-based estimates cover a multi-year period, not a single point in time."
+    },
+    {
+      "id": "per_feature_roll_year",
+      "meaning": "Assessment year is attached to each property record."
+    },
+    {
+      "id": "not_specified",
+      "meaning": "Provider vintage is not known at this ontology resolution."
+    }
+  ],
+  "relation_types": [
+    {
+      "id": "has_study_window",
+      "domain": "place",
+      "range": "study_window",
+      "meaning": "Project viewport preset linked to a named place, without asserting boundary equality."
+    },
+    {
+      "id": "covers",
+      "domain": "dataset",
+      "range": "place",
+      "meaning": "Dataset's documented jurisdiction or study coverage; not a proof of complete geographic availability."
+    },
+    {
+      "id": "contains_feature",
+      "domain": "dataset",
+      "range": "spatial_feature",
+      "meaning": "Dataset publishes features identified in that provider's namespace."
+    },
+    {
+      "id": "observes",
+      "domain": "observation",
+      "range": "spatial_feature",
+      "meaning": "Measurement describes one geographic feature at a stated vintage."
+    },
+    {
+      "id": "provided_by",
+      "domain": "dataset",
+      "range": "source",
+      "meaning": "Source endpoint distributes dataset content."
+    },
+    {
+      "id": "derived_from",
+      "domain": "observation",
+      "range": "dataset",
+      "meaning": "Derived statistical value retains a trace to its source dataset/table."
+    },
+    {
+      "id": "joined_on",
+      "domain": "dataset",
+      "range": "dataset",
+      "meaning": "Declared join between tabulations and geometry, using an explicit external identifier rule."
+    },
+    {
+      "id": "renders",
+      "domain": "map_layer",
+      "range": "dataset",
+      "meaning": "A map layer displays a source dataset without taking ownership of it."
+    },
+    {
+      "id": "intersects",
+      "domain": "spatial_feature",
+      "range": "study_window",
+      "meaning": "Bounding-box intersection used for discovery/rendering, not containment."
+    }
+  ],
+  "identity_rules": [
+    "External identifiers are scoped to their source namespace and dataset vintage.",
+    "Never substitute an internal source OBJECTID for a cross-provider stable identifier.",
+    "A study window's rectangle never asserts administrative boundary equality.",
+    "Preserve observation vintage, units, population denominator and missing/suppressed status.",
+    "An unimplemented discovery candidate is not a live data source."
+  ]
+}

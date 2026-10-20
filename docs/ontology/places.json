@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "coordinate_system": "EPSG:4326",
+  "bbox_order": [
+    "west",
+    "south",
+    "east",
+    "north"
+  ],
+  "geometry_claim": "The following are camera/request rectangles copied from web/app.js, NOT authoritative jurisdiction polygons.",
+  "presets": [
+    {
+      "preset_id": "la-county",
+      "place_id": "place:us:ca:los-angeles-county",
+      "name": "Los Angeles County",
+      "place_type": "county",
+      "bbox": [
+        -118.95,
+        32.7,
+        -117.64,
+        34.85
+      ],
+      "window_kind": "approximate_study_rectangle",
+      "parent_place_id": "place:us:ca:california",
+      "notes": "Study rectangle; Census pilot filters tract GEOIDs to state 06 and county 037."
+    },
+    {
+      "preset_id": "la-city",
+      "place_id": "place:us:ca:los-angeles-city",
+      "name": "Los Angeles City",
+      "place_type": "municipality",
+      "bbox": [
+        -118.67,
+        33.7,
+        -118.15,
+        34.34
+      ],
+      "window_kind": "approximate_study_rectangle",
+      "parent_place_id": "place:us:ca:los-angeles-county",
+      "notes": "Study rectangle; LA City zoning service itself controls jurisdiction."
+    },
+    {
+      "preset_id": "california",
+      "place_id": "place:us:ca:california",
+      "name": "California",
+      "place_type": "state_or_province",
+      "bbox": [
+        -124.42,
+        32.53,
+        -114.13,
+        42.02
+      ],
+      "window_kind": "approximate_study_rectangle",
+      "parent_place_id": "place:us",
+      "notes": "Basemap study preset; does not imply statewide Census/zoning/parcel API coverage."
+    },
+    {
+      "preset_id": "jalisco",
+      "place_id": "place:mx:jal:jalisco",
+      "name": "Jalisco, Mexico",
+      "place_type": "state_or_province",
+      "bbox": [
+        -105.72,
+        18.88,
+        -101.5,
+        22.76
+      ],
+      "window_kind": "approximate_study_rectangle",
+      "parent_place_id": "place:mx",
+      "notes": "Basemap study preset; no Mexican statistical overlay is wired."
+    }
+  ],
+  "dynamic_window": {
+    "preset_id": "viewport",
+    "kind": "user_defined_study_rectangle",
+    "persisted_in": "browser localStorage (stratlas:customRegion)",
+    "notes": "Runtime rectangle only. Not a canonical named geographic entity and not a committed specimen."
+  },
+  "anchor_places": [
+    {
+      "place_id": "place:us",
+      "name": "United States",
+      "place_type": "country",
+      "has_study_window": false
+    },
+    {
+      "place_id": "place:mx",
+      "name": "Mexico",
+      "place_type": "country",
+      "has_study_window": false
+    }
+  ]
+}

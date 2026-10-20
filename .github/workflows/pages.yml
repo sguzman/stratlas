@@ -35,7 +35,7 @@ jobs:
           node --check web/data-cache.js
           node --check web/grid.js
       - name: Test API overlay scope and lifecycle
-        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs tests/ui-contract.test.mjs tests/parcel.test.mjs tests/basemaps.test.mjs
+        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs tests/ontology.test.mjs tests/ui-contract.test.mjs tests/parcel.test.mjs tests/basemaps.test.mjs
       - name: Test spatial core
         run: cargo test --workspace
       - name: Install wasm-pack

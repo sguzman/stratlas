@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "catalog": "../sources/catalog.json",
+  "ontology": "model.json",
+  "description": "Source-to-dataset-to-feature-to-presentation bindings. Status, endpoint, terms and verification remain authoritative in the source catalog; nothing here performs a network request.",
+  "integration_rule": "A source is fetched only if the runtime adapter is enabled and its viewport/zoom/provider restrictions permit; basemaps are selected one at a time.",
+  "sources": [
+    {
+      "source_id": "osm",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "xyz_raster_tile",
+      "dataset_id": "dataset:osm",
+      "feature_type": "web_mercator_tile",
+      "scope": "provider_defined_global",
+      "semantic_role": "cartographic_background",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "osm"
+      },
+      "identity": {
+        "namespace": "osm",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "opentopomap",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "xyz_raster_tile",
+      "dataset_id": "dataset:opentopomap",
+      "feature_type": "web_mercator_tile",
+      "scope": "provider_defined_global",
+      "semantic_role": "cartographic_topography",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "topo"
+      },
+      "identity": {
+        "namespace": "opentopomap",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "usgs-topo",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "arcgis_cached_tile",
+      "dataset_id": "dataset:usgs-topo",
+      "feature_type": "web_mercator_tile",
+      "scope": "usa_focused",
+      "semantic_role": "cartographic_topography",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "usgs-topo"
+      },
+      "identity": {
+        "namespace": "usgs-topo",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "usgs-relief",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "arcgis_cached_tile",
+      "dataset_id": "dataset:usgs-relief",
+      "feature_type": "web_mercator_tile",
+      "scope": "usa_focused",
+      "semantic_role": "shaded_terrain_visual",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "usgs-relief"
+      },
+      "identity": {
+        "namespace": "usgs-relief",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "usgs-imagery",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "arcgis_cached_tile",
+      "dataset_id": "dataset:usgs-imagery",
+      "feature_type": "web_mercator_tile",
+      "scope": "usa_focused",
+      "semantic_role": "orthoimagery_visual",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "usgs-imagery"
+      },
+      "identity": {
+        "namespace": "usgs-imagery",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "carto-voyager",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "xyz_raster_tile",
+      "dataset_id": "dataset:carto-voyager",
+      "feature_type": "web_mercator_tile",
+      "scope": "provider_defined_global",
+      "semantic_role": "cartographic_background",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "carto-voyager"
+      },
+      "identity": {
+        "namespace": "carto-voyager",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "carto-positron",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "xyz_raster_tile",
+      "dataset_id": "dataset:carto-positron",
+      "feature_type": "web_mercator_tile",
+      "scope": "provider_defined_global",
+      "semantic_role": "cartographic_background",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "carto-positron"
+      },
+      "identity": {
+        "namespace": "carto-positron",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "carto-dark",
+      "source_kind": "raster_basemap",
+      "delivery_kind": "xyz_raster_tile",
+      "dataset_id": "dataset:carto-dark",
+      "feature_type": "web_mercator_tile",
+      "scope": "provider_defined_global",
+      "semantic_role": "cartographic_background",
+      "runtime": {
+        "module": "web/app.js",
+        "map_layer": "basemap",
+        "selector_value": "carto-dark"
+      },
+      "identity": {
+        "namespace": "carto-dark",
+        "key": "z/x/y"
+      },
+      "time_model": "provider_updated"
+    },
+    {
+      "source_id": "la-zoning",
+      "source_kind": "vector_feature_api",
+      "delivery_kind": "arcgis_geojson",
+      "dataset_id": "dataset:la-city-zoning",
+      "feature_type": "zoning_feature",
+      "scope": "la_city_pilot",
+      "semantic_role": "planning_designation",
+      "runtime": {
+        "module": "web/zoning.js",
+        "map_layer": "zoning",
+        "selector_value": "zoning"
+      },
+      "identity": {
+        "namespace": "la-city-planning-feature-server-15",
+        "key": "OBJECTID",
+        "secondary_attribute": "Zoning"
+      },
+      "time_model": "provider_updated",
+      "measures": [
+        "zoning_designation",
+        "zoning_category"
+      ]
+    },
+    {
+      "source_id": "tiger-tracts",
+      "source_kind": "vector_feature_api",
+      "delivery_kind": "arcgis_geojson",
+      "dataset_id": "dataset:tiger-acs2024-tracts",
+      "feature_type": "census_tract",
+      "scope": "la_county_pilot",
+      "semantic_role": "statistical_geography",
+      "runtime": {
+        "module": "web/census.js",
+        "map_layer": "census",
+        "selector_value": "acs-metric"
+      },
+      "identity": {
+        "namespace": "us-census-tigerweb-acs2024",
+        "key": "GEOID",
+        "format": "11_digit_census_tract_code"
+      },
+      "time_model": "fixed_geography_vintage"
+    },
+    {
+      "source_id": "acs2024",
+      "source_kind": "statistical_tabulation_api",
+      "delivery_kind": "tabulation_json",
+      "dataset_id": "dataset:acs2024-five-year",
+      "feature_type": "census_tract",
+      "scope": "la_county_pilot",
+      "semantic_role": "tract_aggregate_estimate",
+      "runtime": {
+        "module": "web/census.js",
+        "map_layer": "census",
+        "selector_value": "acs-metric"
+      },
+      "identity": {
+        "namespace": "census-reporter-acs2024",
+        "key": "geo_id",
+        "format": "14000US{GEOID}"
+      },
+      "time_model": "survey_period",
+      "joins_to": {
+        "source_id": "tiger-tracts",
+        "left": "14000US{GEOID}",
+        "right": "GEOID",
+        "rule": "prefix '14000US' to 11-digit tract GEOID"
+      },
+      "measures": [
+        "median_household_income",
+        "median_household_income_moe",
+        "tract_population",
+        "female_share",
+        "hispanic_share",
+        "nonhispanic_white_alone_share"
+      ]
+    },
+    {
+      "source_id": "lacounty-assessor-parcels",
+      "source_kind": "vector_feature_api",
+      "delivery_kind": "arcgis_geojson",
+      "dataset_id": "dataset:la-county-assessor-parcels",
+      "feature_type": "cadastral_parcel",
+      "scope": "la_county_pilot",
+      "semantic_role": "tax_roll_assessment",
+      "runtime": {
+        "module": "web/parcel.js",
+        "map_layer": "assessed_land_value",
+        "selector_value": "assessor"
+      },
+      "identity": {
+        "namespace": "la-county-assessor-arcgis-feature-server-0",
+        "key": "OBJECTID",
+        "secondary_attribute": "AIN"
+      },
+      "time_model": "per_feature_roll_year",
+      "measures": [
+        "assessed_land_value",
+        "assessed_improvement_value"
+      ]
+    },
+    {
+      "source_id": "la-geohub",
+      "source_kind": "discovery_candidate",
+      "delivery_kind": "not_connected",
+      "dataset_id": null,
+      "feature_type": null,
+      "scope": "la_city_candidate",
+      "semantic_role": "not_integrated",
+      "runtime": null,
+      "identity": null,
+      "time_model": "not_specified"
+    },
+    {
+      "source_id": "la-county-planning",
+      "source_kind": "discovery_candidate",
+      "delivery_kind": "not_connected",
+      "dataset_id": null,
+      "feature_type": null,
+      "scope": "la_county_candidate",
+      "semantic_role": "not_integrated",
+      "runtime": null,
+      "identity": null,
+      "time_model": "not_specified"
+    },
+    {
+      "source_id": "inegi-census",
+      "source_kind": "discovery_candidate",
+      "delivery_kind": "not_connected",
+      "dataset_id": null,
+      "feature_type": null,
+      "scope": "mexico_candidate",
+      "semantic_role": "not_integrated",
+      "runtime": null,
+      "identity": null,
+      "time_model": "not_specified"
+    },
+    {
+      "source_id": "ine-elections",
+      "source_kind": "discovery_candidate",
+      "delivery_kind": "not_connected",
+      "dataset_id": null,
+      "feature_type": null,
+      "scope": "mexico_candidate",
+      "semantic_role": "not_integrated",
+      "runtime": null,
+      "identity": null,
+      "time_model": "not_specified"
+    }
+  ],
+  "layers": [
+    {
+      "id": "basemap",
+      "label": "Selected raster basemap",
+      "presentation": "single_raster",
+      "selection_element": "basemap",
+      "source_ids": [
+        "osm",
+        "opentopomap",
+        "usgs-topo",
+        "usgs-relief",
+        "usgs-imagery",
+        "carto-voyager",
+        "carto-positron",
+        "carto-dark"
+      ],
+      "feature_type": "web_mercator_tile",
+      "retrieval": "Only intersecting XYZ tiles, depending on user basemap selection."
+    },
+    {
+      "id": "zoning",
+      "label": "LA City zoning",
+      "presentation": "categorical_fill_with_highlight",
+      "selection_element": "zoning",
+      "source_ids": [
+        "la-zoning"
+      ],
+      "feature_type": "zoning_feature",
+      "min_zoom_for_new_data": 13,
+      "retrieval": "ArcGIS viewport IDs, then selected geometry in chunks; retained feature geometries."
+    },
+    {
+      "id": "census",
+      "label": "LA County tract demographics",
+      "presentation": "single_metric_choropleth",
+      "selection_element": "acs-metric",
+      "source_ids": [
+        "tiger-tracts",
+        "acs2024"
+      ],
+      "feature_type": "census_tract",
+      "min_zoom_for_new_data": 12,
+      "retrieval": "TIGERweb tract GeoJSON restricted to visible region; Census Reporter aggregate estimates joined using 14000US-prefixed tract GEOIDs."
+    },
+    {
+      "id": "assessed_land_value",
+      "label": "LA County tax-roll assessed land values",
+      "presentation": "fixed_band_choropleth",
+      "selection_element": "assessor",
+      "source_ids": [
+        "lacounty-assessor-parcels"
+      ],
+      "feature_type": "cadastral_parcel",
+      "min_zoom_for_new_data": 16,
+      "retrieval": "ArcGIS viewport IDs, then selected parcel geometries/values in chunks; no ownership or mailing data requested."
+    }
+  ]
+}

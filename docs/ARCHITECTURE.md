@@ -10,7 +10,7 @@ Rust owns geographic predicates, coordinate transforms, bounding-box area calcul
 
 ## Provider adapters
 
-Basemap registry lives in web/app.js. Future APIs use a second layer-catalog registry: metadata should include source, coverage, reference year, resolution, license, rate limits, CORS and API-key requirements. For geographic queries, request viewport intersection with region, not every location in a whole county. Bound feature counts and query density.
+Basemap runtime configuration lives in web/app.js. Source provenance and live verification remain authoritative in docs/sources/catalog.json. The [place and data-source ontology](ontology/README.md) separately defines place types, study rectangles, datasets, source-to-layer bindings, geographic ID namespaces, measure semantics, and join rules. All 16 cataloged sources have an ontology binding, including inactive candidates; this is metadata, not a new fetch engine. Geographic requests intersect the viewport and selected study rectangle instead of automatically downloading entire jurisdictions.
 
 Census and zoning adapters query actual hosted public GIS/API services, use Rust/WASM for geospatial filtering and tract-statistic joins, and preserve already retrieved features during layer toggles, map-style changes and zoom-out. New requests require their source-specific detailed zoom, but existing geography is not discarded below it. Census request envelopes are recursively subdivided when provider output is capped, without an arbitrary total-call cutoff; up to three requests run concurrently, with depth and viewport constraints. Completed envelopes form a bounded geometric coverage index, so pans request only uncovered strips. Geometry is drawn before statistical enrichment finishes, with two bounded concurrent statistics batches. Memory-retained geography remains finite; there is no complete county mirror. `filter_geojson_bbox` filters intersecting feature extents rather than clipping polygon vertices.
 
@@ -20,10 +20,10 @@ Basemap tiles use fetch with browser default HTTP caching, honoring provider Cac
 
 Implemented: public geographic JSON requests use optional IndexedDB caching with versioned namespaces and per-source retention ceilings, bounded by upstream HTTP directives, and 192-record/24 MiB capacity. A clear-cache control is available. Basemap tiles remain in the browser's ordinary HTTP cache. No persistent data server is required. See [CACHE.md](CACHE.md).
 
-## Future work
+## Explicitly pending integrations
 
-- Complete live-browser QA of the first LA City Planning ArcGIS zoning FeatureServer adapter (`web/zoning.js`; details in `docs/ZONING.md`).
-- Add Census/INEGI statistical geography joins with stable geographic IDs and year metadata.
-- Add election precinct/section aggregates and local zoning providers.
-- Add independent layer toggles, legends, provenance, and efficient Rust spatial joins.
-- Add only permitted browser caching after a provider-by-provider policy review.
+- Census/TIGERweb overlay adapters are implemented, but end-to-end *live* Census browser verification remains pending in the source catalog.
+- Electoral aggregates, household wealth data, market transaction prices, and Mexico-specific statistical overlays are not implemented. Research portals in the catalog are not active providers.
+- Further place ontologies may add official jurisdiction polygons and identifiers, but existing named study rectangles must not be mislabeled as legal administrative boundaries.
+
+Data source coverage and implementation status are tracked in the [source registry](sources/README.md); source-to-layer meaning and observations are tracked in the [ontology](ontology/README.md).

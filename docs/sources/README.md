@@ -1,6 +1,6 @@
 # Geographic data source registry
 
-This directory is Stratlas's source of truth for provider provenance. The [machine-readable catalog](catalog.json) contains each source's identity, original URL, coverage, attribution, terms/policy reference, vintage, access method, cache restrictions, and integration status.
+This directory is Stratlas's source of truth for provider provenance. The [machine-readable catalog](catalog.json) contains each source's identity, original URL, coverage, attribution, terms/policy reference, vintage, access method, cache restrictions, and integration status. For the formal definitions of place types, datasets, geographic identities, observations and which application layers consume each source, see the separate [place and source ontology](../ontology/README.md) and [binding manifest](../ontology/sources.json).
 
 ## Meaning of statuses
 

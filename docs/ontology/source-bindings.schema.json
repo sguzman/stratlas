@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sguzman/stratlas/blob/main/docs/ontology/source-bindings.schema.json",
+  "title": "Stratlas source-to-layer ontology bindings",
+  "description": "Structural contract for docs/ontology/sources.json. Foreign key checks live in tests/ontology.test.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog",
+    "ontology",
+    "description",
+    "integration_rule",
+    "sources",
+    "layers"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "catalog": {
+      "const": "../sources/catalog.json"
+    },
+    "ontology": {
+      "const": "model.json"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "integration_rule": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source_binding"
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/layer"
+      }
+    }
+  },
+  "$defs": {
+    "source_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_kind",
+        "delivery_kind",
+        "dataset_id",
+        "feature_type",
+        "scope",
+        "semantic_role",
+        "runtime",
+        "identity",
+        "time_model"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_kind": {
+          "enum": [
+            "raster_basemap",
+            "vector_feature_api",
+            "statistical_tabulation_api",
+            "discovery_candidate"
+          ]
+        },
+        "delivery_kind": {
+          "enum": [
+            "xyz_raster_tile",
+            "arcgis_cached_tile",
+            "arcgis_geojson",
+            "tabulation_json",
+            "not_connected"
+          ]
+        },
+        "dataset_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "feature_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/runtime"
+            }
+          ]
+        },
+        "identity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/identity"
+            }
+          ]
+        },
+        "time_model": {
+          "enum": [
+            "provider_updated",
+            "fixed_geography_vintage",
+            "survey_period",
+            "per_feature_roll_year",
+            "not_specified"
+          ]
+        },
+        "joins_to": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_id",
+            "left",
+            "right",
+            "rule"
+          ],
+          "properties": {
+            "source_id": {
+              "type": "string"
+            },
+            "left": {
+              "type": "string"
+            },
+            "right": {
+              "type": "string"
+            },
+            "rule": {
+              "type": "string"
+            }
+          }
+        },
+        "measures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "map_layer",
+        "selector_value"
+      ],
+      "properties": {
+        "module": {
+          "type": "string",
+          "pattern": "^web/"
+        },
+        "map_layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector_value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "key"
+      ],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "secondary_attribute": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "presentation",
+        "selection_element",
+        "source_ids",
+        "feature_type",
+        "retrieval"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "presentation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selection_element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "feature_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "min_zoom_for_new_data": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 22
+        },
+        "retrieval": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
