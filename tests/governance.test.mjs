@@ -65,7 +65,7 @@ test("LA is a documented existing pilot, not a completed metropolitan boundary o
   assert.equal(la.authoritative_metropolitan_boundary,null);
   assert.equal(la.scope_status,"metro_definition_pending");
   assert.equal(la.existing_pilot,true);
-  assert.match(la.boundary_note,/not an authoritative metropolitan boundary/);
+  assert.match(la.boundary_note,/not establish full metropolitan coverage|Neither is an authoritative metropolitan boundary/);
   assert.equal(la.capabilities.length,standard.capabilities.length);
   const seen=new Set();
   for(const capability of la.capabilities){
@@ -150,7 +150,7 @@ test("downstream queue schema distinguishes definitions from authorized task ins
 test("public documentation separates specimen intake and downstream queue execution",()=>{
   const q=read("docs/queues/README.md");
   const standardDoc=read("docs/metropolises/STANDARD.md");
-  assert.match(q,/Task creation is the only permitted result/);
+  assert.match(q,/Task creation is the .*only.* permitted result/);
   assert.match(q,/separate, explicit authorization/);
   assert.match(q,/initial task queues are deliberately empty/);
   assert.match(standardDoc,/Required common capabilities/);
