@@ -27,6 +27,12 @@ try{
   },{timeout:30000});
   assert.equal(await page.locator("#preview-income").count(),0);
   assert.equal(await page.locator("#grid-canvas").count(),1);
+  assert.equal(await page.locator("#grid-canvas").evaluate(el=>el.parentElement?.id),"map",
+    "Tile grid must share MapLibre's stacking context");
+  const gridLayer=await page.locator("#grid-canvas").evaluate(el=>Number(getComputedStyle(el).zIndex));
+  const attributionLayer=await page.locator(".maplibregl-ctrl-bottom-right").evaluate(el=>Number(getComputedStyle(el).zIndex));
+  assert.ok(attributionLayer>gridLayer,
+    "Attribution must render above tile grid lines");
   assert.equal(await page.locator("#tile-grid").isChecked(),true);
   const painted=await page.$eval("#grid-canvas",element=>{
     if(element.hidden)return false;

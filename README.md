@@ -6,7 +6,7 @@ Rust/WebAssembly-first geographic research map. MapLibre renders the map; Rust p
 
 ## Using the map
 
-Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Mercator tiles above all basemaps and data overlays, using Rust/WASM geometry. Its enabled state survives reloads; at very high zoom its displayed grid level may be coarsened for clarity.
+Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Mercator tiles above all basemaps and data overlays, using Rust/WASM geometry. Its enabled state survives reloads; at very high zoom its displayed grid level may be coarsened for clarity. Grid lines remain below MapLibre attribution, navigation controls, and popups.
 
 **Data overlays are optional.** Census estimates (zoom 12+), Los Angeles City zoning (zoom 13+), and Los Angeles County assessed parcel land values (zoom 16+) use public geographic APIs. Previously loaded features remain available across navigation. The sidebar reports source coverage, loading progress, and errors.
 

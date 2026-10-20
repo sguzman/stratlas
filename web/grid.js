@@ -8,6 +8,11 @@ const LIMIT=250;
 export function createGridOverlay(map,{getRegion,gridGeoJson,onStatus,canvas}) {
   let enabled=false;
   const surface=canvas;
+  // Grid must share the map's stacking context. When it sits outside #map,
+  // its z-index places lines above the MapLibre attribution and navigation.
+  // Reparent the existing canvas without recreating or repainting map data.
+  if(surface && surface.parentElement!==map.getContainer())
+    map.getContainer().appendChild(surface);
   const ctx=surface?.getContext?.("2d",{alpha:true});
   if(!ctx){
     onStatus("Grid unavailable: canvas is not supported. Map remains usable.");

@@ -212,3 +212,12 @@ main .maplibregl-ctrl-attrib{
 }
 main .maplibregl-ctrl-attrib a{color:var(--hud-link)}
 .appearance select{margin-bottom:0}
+
+/* Tile inspection lines belong above raster/vector map content but below all
+   interactive MapLibre controls and popups. All share #map's stack context. */
+#map .grid-canvas{z-index:3}
+#map .maplibregl-ctrl-top-left,
+#map .maplibregl-ctrl-top-right,
+#map .maplibregl-ctrl-bottom-left,
+#map .maplibregl-ctrl-bottom-right,
+#map .maplibregl-popup{z-index:5}

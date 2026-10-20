@@ -23,6 +23,11 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(app.includes("findOrCreateGridCanvas()"));
   assert.ok(app.includes('map.on("zoom",updateZoom)'));
   assert.ok(style.includes(".grid-canvas{"));
+  assert.ok(app.includes("createGridOverlay"));
+  const grid=readFileSync(new URL("../web/grid.js",import.meta.url),"utf8");
+  assert.ok(grid.includes("map.getContainer().appendChild(surface)"));
+  assert.ok(style.includes("#map .maplibregl-ctrl-bottom-right"));
+  assert.ok(style.includes("#map .maplibregl-popup"));
   assert.ok(!html.includes("preview-income"));
   assert.ok(!app.includes("preview-income"));
   assert.ok(html.includes('id="zoning-legend"'));
