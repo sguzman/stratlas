@@ -1,195 +1,165 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {pathToFileURL} from "node:url";
-
-// Import an ESM browser module without requiring Node/npm project scaffolding.
-const file=new URL("../web/zoning.js",import.meta.url);
-const code=readFileSync(file,"utf8");
-const {createZoningOverlay,ZONING_CATEGORIES}=await import("data:text/javascript,"+encodeURIComponent(code));
-
-class FakeMap {
-  constructor({zoom=14,viewport=[-118.26,34.03,-118.24,34.06]}={}) {
+const src=readFileSync(new URL("../web/zoning.js",import.meta.url),"utf8");
+const {createZoningOverlay,ZONING_CATEGORIES}=await import(
+  "data:text/javascript,"+encodeURIComponent(src));
+const polygon=id=>({type:"Feature",
+  properties:{OBJECTID:id,Zoning:"C2",CATEGORY:id%2?"Commercial":"Residential"},
+  geometry:{type:"Polygon",coordinates:[[[-118.26,34.03],[-118.24,34.03],
+    [-118.24,34.05],[-118.26,34.05],[-118.26,34.03]]]}
+});
+function response(obj){return {ok:true,json:async()=>obj}}
+const features=ids=>({type:"FeatureCollection",features:ids.map(polygon)});
+class FakeMap{
+  constructor({zoom=14,viewport=[-118.28,34.02,-118.21,34.08]}={}){
     this.zoom=zoom;this.viewport=viewport;this.sources=new Map();
-    this.layers=new Map();this.events=new Map();
+    this.layers=new Map();this.events=new Map();this.paint=new Map();
+    this.filters=new Map();
   }
-  getZoom(){return this.zoom}
-  isStyleLoaded(){return true}
-  getBounds(){
-    const [w,s,e,n]=this.viewport;
-    return {getWest:()=>w,getSouth:()=>s,getEast:()=>e,getNorth:()=>n};
-  }
-  getSource(id){return this.sources.get(id)}
-  getLayer(id){return this.layers.get(id)}
-  addSource(id,entry){this.sources.set(id,{...entry,setData(value){this.data=value}})}
-  addLayer(entry){this.layers.set(entry.id,entry)}
-  setLayoutProperty(id,name,value){const layer=this.layers.get(id);layer.layout={...(layer.layout||{}),[name]:value}}
   on(name,callback){this.events.set(name,callback)}
   fire(name){this.events.get(name)?.({})}
+  getZoom(){return this.zoom}
+  getBounds(){const [w,s,e,n]=this.viewport;return {
+    getWest:()=>w,getSouth:()=>s,getEast:()=>e,getNorth:()=>n};}
+  getSource(id){return this.sources.get(id)}
+  getLayer(id){return this.layers.get(id)}
+  addSource(id,opts){this.sources.set(id,{...opts,data:opts.data,setData(v){this.data=v}})}
+  addLayer(layer){this.layers.set(layer.id,layer)}
+  setPaintProperty(id,name,val){this.paint.set(id+":"+name,val)}
+  setFilter(id,value){this.filters.set(id,value)}
+  setLayoutProperty(id,name,value){
+    const layer=this.layers.get(id);layer.layout={...(layer.layout||{}),[name]:value};
+  }
+  queryRenderedFeatures(){return []}
 }
-
-const geojson={type:"FeatureCollection",features:[{
-  type:"Feature",properties:{OBJECTID:1,Zoning:"C2",CATEGORY:"Commercial"},
-  geometry:{type:"Polygon",coordinates:[[[-118.25,34.04],[-118.24,34.04],
-    [-118.24,34.05],[-118.25,34.05],[-118.25,34.04]]]}
-}]};
-function create(map,region,fetches,statuses) {
+function make(map,statuses=[],options={}){
   return createZoningOverlay(map,{
-    getRegion:()=>region,
-    filterFeatures:input=>input,
-    onStatus:value=>statuses.push(value)
+    getRegion:()=>[-119,33,-117,35],filterFeatures:value=>value,
+    onStatus:x=>statuses.push(x),...options
   });
 }
-async function settle() {
-  await new Promise(resolve=>setImmediate(resolve));
-  await new Promise(resolve=>setImmediate(resolve));
-}
-
-test("zoning is opt-in and never downloads by default",async()=>{
-  const map=new FakeMap(),requests=[],statuses=[];
-  globalThis.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>geojson}};
-  create(map,[-119,33,-117,35],requests,statuses);
-  map.fire("style.load");map.fire("moveend");await settle();
-  assert.equal(requests.length,0);
-});
-
-test("no requests outside source, region, or below minimum zoom",async()=>{
-  const requests=[],statuses=[];
-  globalThis.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>geojson}};
-  const distant=new FakeMap({viewport:[-73.99,40.7,-73.9,40.8]});
-  const a=create(distant,[-74.1,40.6,-73.8,40.9],requests,statuses);
-  distant.fire("style.load");a.setEnabled(true);await settle();
-  assert.equal(requests.length,0);
-  const low=new FakeMap({zoom:11});
-  const b=create(low,[-119,33,-117,35],requests,statuses);
-  low.fire("style.load");b.setEnabled(true);await settle();
-  assert.equal(requests.length,0);
-});
-
-test("queries only viewport/region/source intersection and displays returned features",async()=>{
-  const map=new FakeMap(),requests=[],statuses=[];
-  globalThis.fetch=async url=>{requests.push(new URL(url));return {ok:true,json:async()=>geojson}};
-  const z=create(map,[-118.255,34.035,-118.235,34.055],requests,statuses);
-  map.fire("style.load");z.setEnabled(true);await settle();
-  assert.equal(requests.length,1);
-  assert.equal(requests[0].hostname,"services5.arcgis.com");
-  const b=requests[0].searchParams.get("geometry").split(",").map(Number);
-  assert.ok(b[0]>=-118.255 && b[1]>=34.035);
-  assert.ok(b[2]<=-118.235 && b[3]<=34.055);
-  assert.equal(map.getSource("la-zoning-data").data.features[0].properties.Zoning,"C2");
-  assert.match(statuses.at(-1),/1 retained polygons/);
-  z.setEnabled(false);
-  assert.equal(map.getSource("la-zoning-data").data.features.length,1,
-    "Disabling must preserve the already loaded polygons");
-  z.setEnabled(true);await settle();
-  assert.equal(requests.length,1,"Re-enabling the same view must not refetch");
-});
-
-test("early style.load registers zoning source before basemap tiles finish",async()=>{
-  let requests=0;globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>geojson}};
-  const map=new FakeMap({zoom:11});map.isStyleLoaded=()=>false;
-  const layer=create(map,[-119,33,-117,35],[],[]);
-  map.fire("style.load");layer.setEnabled(true);await settle();
-  assert.ok(map.getSource("la-zoning-data"));
-  assert.ok(map.getLayer("la-zoning-fill"));
-  assert.equal(requests,0);
-});
-
-test("zooming out preserves previously loaded zoning and makes no new API calls",async()=>{
-  const map=new FakeMap(),requests=[],statuses=[];
-  globalThis.fetch=async url=>{requests.push(url);return {ok:true,json:async()=>geojson}};
-  const overlay=create(map,[-119,33,-117,35],requests,statuses);
-  map.fire("style.load");overlay.setEnabled(true);await settle();
-  const count=requests.length;
-  map.zoom=8;map.fire("moveend");await settle();
-  assert.equal(requests.length,count);
-  assert.equal(map.getSource("la-zoning-data").data.features.length,1);
-  assert.match(statuses.at(-1),/retained polygons/);
-});
-test("dense zoning requests subdivide geographic bounds and retain deduplicated features",async()=>{
-  const map=new FakeMap(),urls=[],statuses=[];
+async function settle(){for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve))}
+function mockApi(ids=[1,2],capture=[]){
   globalThis.fetch=async url=>{
-    urls.push(new URL(url));
-    const bbox=new URL(url).searchParams.get("geometry").split(",").map(Number);
-    const wide=(bbox[2]-bbox[0])>0.015;
-    if(wide){
-      // A capped/overfull page of a dense initial study bbox.
-      const offset=Number(new URL(url).searchParams.get("resultOffset"));
-      return {ok:true,json:async()=>({type:"FeatureCollection",features:
-        Array.from({length:500},(_,i)=>({type:"Feature",properties:{OBJECTID:offset+i},
-          geometry:geojson.features[0].geometry}))})};
-    }
-    return {ok:true,json:async()=>geojson};
+    const u=new URL(url);capture.push(u);
+    if(u.searchParams.get("returnIdsOnly")==="true")
+      return response({objectIdFieldName:"OBJECTID",objectIds:ids});
+    const requested=u.searchParams.get("objectIds").split(",").map(Number);
+    return response(features(requested));
   };
-  const overlay=create(map,[-119,33,-117,35],urls,statuses);
-  map.fire("style.load");overlay.setEnabled(true);await settle();
-  // Caller is never permitted to fetch geography outside the viewport.
-  assert.ok(urls.length>4);
-  for(const u of urls){
-    const [w,s,e,n]=u.searchParams.get("geometry").split(",").map(Number);
-    assert.ok(w>=-118.26-.01 && e<=-118.24+.01);
-    assert.ok(s>=34.03-.01 && n<=34.06+.01);
-  }
-  assert.ok(map.getSource("la-zoning-data").data.features.length>0);
+}
+test("zoning makes no requests until explicitly enabled",async()=>{
+  let count=0;globalThis.fetch=async()=>{count++;throw Error("Unexpected")};
+  const map=new FakeMap();make(map);
+  map.fire("style.load");map.fire("moveend");await settle();
+  assert.equal(count,0);
 });
-
-test("zoning legend exactly matches rendered category palette and toggles with visibility",()=>{
+test("out of region or below detailed zoom makes no GIS requests",async()=>{
+  let count=0;globalThis.fetch=async()=>{count++};
+  const outside=new FakeMap({viewport:[-74,40,-73.9,40.1]});
+  const a=make(outside);a.setEnabled(true);
+  const low=new FakeMap({zoom:9});const b=make(low);b.setEnabled(true);
+  await settle();
+  assert.equal(count,0);
+});
+test("viewport-bounded ID query then 40-ID geometry chunks, no recursive subdivision",async()=>{
+  const calls=[],map=new FakeMap(),statuses=[];
+  mockApi(Array.from({length:93},(_,i)=>i+1),calls);
+  const z=make(map,statuses);
+  z.setEnabled(true);await settle();
+  const ids=calls.filter(x=>x.searchParams.get("returnIdsOnly")==="true");
+  const shapes=calls.filter(x=>x.searchParams.has("objectIds"));
+  assert.equal(ids.length,1);
+  assert.equal(shapes.length,3);
+  assert.deepEqual(shapes.map(x=>x.searchParams.get("objectIds").split(",").length),[40,40,13]);
+  assert.equal(ids[0].searchParams.get("geometryType"),"esriGeometryEnvelope");
+  const [w,s,e,n]=ids[0].searchParams.get("geometry").split(",").map(Number);
+  assert.ok(w>=-118.29&&s>=34.01&&e<=-118.20&&n<=34.09);
+  assert.equal(map.getSource("la-zoning-data").data.features.length,93);
+  assert.ok(statuses.at(-1).includes("93/93 in current view"));
+  const count=calls.length;
+  z.setEnabled(false);z.setEnabled(true);await settle();
+  assert.equal(calls.length,count,"Toggle reuses in-memory polygons and ID index");
+  map.zoom=9;map.fire("moveend");await new Promise(r=>setTimeout(r,180));
+  assert.equal(map.getSource("la-zoning-data").data.features.length,93);
+});
+test("completed geometry batches render progressively without waiting for others",async()=>{
+  const map=new FakeMap(),statuses=[];
+  let resolveSecond;
+  globalThis.fetch=async url=>{
+    const u=new URL(url);
+    if(u.searchParams.get("returnIdsOnly")==="true")
+      return response({objectIds:Array.from({length:60},(_,i)=>i+1)});
+    const ids=u.searchParams.get("objectIds").split(",").map(Number);
+    if(ids[0]===41)
+      return new Promise(resolve=>{resolveSecond=()=>resolve(response(features(ids)))});
+    return response(features(ids));
+  };
+  const z=make(map,statuses);
+  z.setEnabled(true);await settle();
+  assert.equal(typeof resolveSecond,"function");
+  assert.equal(map.getSource("la-zoning-data").data.features.length,40,
+    "First batch must be visible while another batch is pending");
+  assert.match(statuses.at(-1),/loading|loaded/);
+  resolveSecond();await settle();
+  assert.equal(map.getSource("la-zoning-data").data.features.length,60);
+});
+test("a failed batch preserves earlier polygons and can retry missing IDs later",async()=>{
+  const map=new FakeMap(),statuses=[];let fail=true,count=0;
+  globalThis.fetch=async url=>{
+    const u=new URL(url);count++;
+    if(u.searchParams.has("returnIdsOnly"))return response({objectIds:[1,2,3]});
+    if(fail)throw Error("Transient service interruption");
+    return response(features([1,2,3]));
+  };
+  const z=make(map,statuses);
+  z.setEnabled(true);await settle();
+  assert.match(statuses.at(-1),/unavailable|failed/);
+  fail=false;z.setEnabled(false);z.setEnabled(true);await settle();
+  assert.equal(map.getSource("la-zoning-data").data.features.length,3);
+  assert.ok(count>=3);
+});
+test("opacity updates map fill without querying or deleting any polygons",async()=>{
+  const map=new FakeMap(),requests=[];mockApi([1,2],requests);
+  const z=make(map);
+  z.setEnabled(true);await settle();
+  const before=requests.length;
+  z.setOpacity(0.75);
+  assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.75);
+  z.setOpacity(0);
+  assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0);
+  assert.equal(map.getSource("la-zoning-data").data.features.length,2);
+  assert.equal(requests.length,before);
+});
+test("legend category hover highlights matching map polygons; focus works too",()=>{
+  const saved=globalThis.document;
   const element=tag=>({
-    tag,children:[],style:{},hidden:false,textContent:"",
+    tag,children:[],handlers:new Map(),attributes:{},style:{},hidden:false,
+    textContent:"",tabIndex:undefined,
     append(...items){this.children.push(...items)},
     replaceChildren(...items){this.children=items},
+    setAttribute(name,value){this.attributes[name]=value},
+    addEventListener(name,fn){this.handlers.set(name,fn)},
     get childElementCount(){return this.children.length}
   });
-  const previous=globalThis.document;globalThis.document={createElement:element};
+  globalThis.document={createElement:element};
   try{
-    const container=element("div"),map=new FakeMap({zoom:11}),statuses=[];
-    container.hidden=true;
-    const control=createZoningOverlay(map,{
-      getRegion:()=>[-119,33,-117,35],
-      filterFeatures:input=>input,
-      onStatus:x=>statuses.push(x),legendContainer:container
-    });
-    assert.equal(container.hidden,true);
-    control.setEnabled(true);
+    const map=new FakeMap({zoom:9}),container=element("div");
+    const z=make(map,[],{legendContainer:container});
+    z.setEnabled(true);
     assert.equal(container.hidden,false);
-    const labels=container.children[1].children;
-    assert.equal(labels.length,ZONING_CATEGORIES.length);
-    for(let i=0;i<labels.length;i++){
-      assert.equal(labels[i].children[0].style.backgroundColor,ZONING_CATEGORIES[i][1]);
-      assert.equal(labels[i].children[1].textContent,ZONING_CATEGORIES[i][0]);
-    }
-    control.setEnabled(false);
-    assert.equal(container.hidden,true);
-    control.setEnabled(true);
-    assert.equal(container.hidden,false);
-    assert.equal(container.children[1].children.length,labels.length);
-  }finally{globalThis.document=previous}
-});
-test("zoning loads beyond 24 requests and toggling partial coverage does not refetch",async()=>{
-  const map=new FakeMap({viewport:[-118.28,34.01,-118.22,34.07]});
-  const urls=[],statuses=[],focus=[-118.25231,34.0421];
-  globalThis.fetch=async url=>{
-    const u=new URL(url),[w,s,e,n]=u.searchParams.get("geometry").split(",").map(Number);
-    urls.push(u);
-    const capped=w<focus[0]&&focus[0]<e&&s<focus[1]&&focus[1]<n;
-    if(capped){
-      const offset=Number(u.searchParams.get("resultOffset"));
-      return {ok:true,json:async()=>({type:"FeatureCollection",features:
-        Array.from({length:500},(_,i)=>({type:"Feature",
-          properties:{OBJECTID:offset+i,Zoning:"C2",CATEGORY:"Commercial"},
-          geometry:geojson.features[0].geometry}))})};
-    }
-    return {ok:true,json:async()=>geojson};
-  };
-  const control=create(map,[-119,33,-117,35],urls,statuses);
-  control.setEnabled(true);
-  for(let i=0;i<100;i++){
-    await settle();
-    if(statuses.at(-1)?.includes("provider requests"))break;
-  }
-  const count=urls.length;
-  assert.ok(count>24,"No arbitrary 24-request cap for zoning");
-  assert.ok(map.getSource("la-zoning-data").data.features.length>0);
-  control.setEnabled(false);control.setEnabled(true);await settle();
-  assert.equal(urls.length,count,"Previously loaded partial window is reused");
+    const entries=container.children[1].children;
+    assert.equal(entries.length,ZONING_CATEGORIES.length);
+    const chosen=entries[1];assert.equal(chosen.children[1].textContent,"Commercial");
+    chosen.handlers.get("mouseenter")();
+    assert.deepEqual(map.filters.get("la-zoning-highlight"),["==",["get","CATEGORY"],"Commercial"]);
+    assert.equal(map.paint.get("la-zoning-fill:fill-opacity")[0],"case");
+    chosen.handlers.get("mouseleave")();
+    assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.42);
+    chosen.handlers.get("focus")();
+    assert.deepEqual(map.filters.get("la-zoning-highlight"),["==",["get","CATEGORY"],"Commercial"]);
+    chosen.handlers.get("blur")();
+    z.setEnabled(false);assert.equal(container.hidden,true);
+  }finally{globalThis.document=saved}
 });

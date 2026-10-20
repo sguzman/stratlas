@@ -61,7 +61,11 @@
       <section class="coming">
         <h2>Data layers</h2>
         <label class="check"><input id="zoning" type="checkbox"> Los Angeles City zoning</label>
-        <div id="zoning-legend" class="zoning-legend" aria-label="Zoning category color legend" hidden></div>
+        <div id="zoning-controls" hidden>
+          <div class="zoning-opacity-label"><label for="zoning-opacity">Zoning opacity</label><output id="zoning-opacity-value" for="zoning-opacity">42%</output></div>
+          <input id="zoning-opacity" type="range" min="0" max="100" step="1" value="42">
+          <div id="zoning-legend" class="zoning-legend" aria-label="Zoning category color legend" hidden></div>
+        </div>
         <p id="overlay-status" class="meta" aria-live="polite">Off · Source: LA City Planning · visible area only · zoom 13+</p>
         <label for="acs-metric" class="data-label">US Census · Los Angeles County tracts</label>
         <select id="acs-metric">

@@ -130,7 +130,21 @@ async function start() {
     legendContainer:$("zoning-legend"),
     onStatus:message=>$("overlay-status").textContent=message
   });
-  $("zoning").addEventListener("change",event=>zoning.setEnabled(event.target.checked));
+  const zoningOpacity=$("zoning-opacity");
+  const storedOpacity=Math.max(0,Math.min(100,Number(read("zoningOpacity","42"))||0));
+  zoningOpacity.value=String(storedOpacity);
+  $("zoning-opacity-value").textContent=storedOpacity+"%";
+  zoning.setOpacity(storedOpacity/100);
+  zoningOpacity.addEventListener("input",event=>{
+    const pct=Number(event.target.value);
+    $("zoning-opacity-value").textContent=pct+"%";
+    zoning.setOpacity(pct/100);
+    write("zoningOpacity",String(pct));
+  });
+  $("zoning").addEventListener("change",event=>{
+    $("zoning-controls").hidden=!event.target.checked;
+    zoning.setEnabled(event.target.checked);
+  });
   const census=createCensusOverlay(map,{
     getRegion:()=>region().bbox,
     filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),

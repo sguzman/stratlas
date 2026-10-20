@@ -17,5 +17,8 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(!html.includes("preview-income"));
   assert.ok(!app.includes("preview-income"));
   assert.ok(html.includes('id="zoning-legend"'));
+  assert.ok(html.includes('id="zoning-controls"'));
+  assert.ok(html.includes('id="zoning-opacity"'));
+  assert.ok(html.includes('id="zoning-opacity-value"'));
   assert.ok(app.includes('legendContainer:$("zoning-legend")'));
 });

@@ -57,6 +57,9 @@ jobs:
           SERVER_PID=$!
           trap 'kill $SERVER_PID || true' EXIT
           node tests/browser-smoke.mjs
+      - name: Live LA zoning browser API integration
+        timeout-minutes: 3
+        run: node tests/zoning-live.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site

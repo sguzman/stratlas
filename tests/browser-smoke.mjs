@@ -41,6 +41,10 @@ try{
   // needs to expose a complete, truthful categorical legend.
   assert.equal(await page.locator("#zoning-legend").isVisible(),false);
   await page.locator("#zoning").check();
+  assert.equal(await page.locator("#zoning-controls").isVisible(),true);
+  assert.equal(await page.locator("#zoning-opacity-value").textContent(),"42%");
+  await page.locator("#zoning-opacity").evaluate(element=>{element.value="76";element.dispatchEvent(new Event("input",{bubbles:true}));});
+  assert.equal(await page.locator("#zoning-opacity-value").textContent(),"76%");
   assert.equal(await page.locator("#zoning-legend").isVisible(),true);
   assert.equal(await page.locator(".zoning-legend-item").count(),17);
   assert.ok(await page.locator("#zoning-legend").getByText("Single Family Residential").isVisible());

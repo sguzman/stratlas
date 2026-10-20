@@ -86,9 +86,9 @@
       "attribution": "City of Los Angeles, Department of City Planning",
       "policy": "Hosted ArcGIS FeatureServer; observe endpoint terms and response headers",
       "credentials": "none",
-      "cache": "up to six hours unless response directives restrict",
+      "cache": "Up to six hours for ID lookups and polygon GeoJSON, capped by provider directives; browser session retains polygons by OBJECTID",
       "min_zoom": 13,
-      "limits": "500 records per page; up to 4 pages per envelope, recursively subdivides truncated visible envelopes up to depth 5; no fixed total-call cutoff; incomplete sections are labeled and cached."
+      "limits": "Viewport-scoped ArcGIS returnIdsOnly discovery; missing geometries retrieved in 40-ID batches with three concurrent requests, published progressively; no fixed total request cutoff."
     },
     {
       "id": "tiger-tracts",
