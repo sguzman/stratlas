@@ -122,23 +122,33 @@ test("oversized viewport is subdivided instead of rejected at 250 tracts",async(
   c.setMetric("income");await settle();
   const geom=urls.filter(x=>x.hostname==="tigerweb.geo.census.gov");
   assert.ok(geom.length>=5, "A large response must be subdivided");
-  assert.ok(geom.length<=24, "Bound the requests per navigation");
+  assert.ok(geom.length<200, "Subdivision remains bounded by depth");
   assert.equal(map.getSource("acs-tracts").data.features.length,1);
   assert.doesNotMatch(statuses.at(-1),/Too many tracts/);
 });
-test("permanently capped provider still has bounded work, retains data, and reports partial coverage",async()=>{
-  const requests=[],statuses=[];
+test("more than 24 Census geography requests complete without arbitrary request cutoff",async()=>{
+  const urls=[],statuses=[],focus=[-118.24657,34.044567];
   globalThis.fetch=async url=>{
-    requests.push(url);
-    if(url.includes("censusreporter"))throw Error("No stats for truncated data");
-    return {ok:true,json:async()=>({type:"FeatureCollection",features:
-      Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))
-    })};
+    const parsed=new URL(url);urls.push(parsed);
+    if(parsed.hostname==="api.censusreporter.org")
+      return {ok:true,json:async()=>figures};
+    const [w,s,e,n]=parsed.searchParams.get("geometry").split(",").map(Number);
+    const capped=w<focus[0]&&focus[0]<e&&s<focus[1]&&focus[1]<n;
+    return {ok:true,json:async()=>({type:"FeatureCollection",
+      features:capped
+        ? Array.from({length:251},(_,i)=>feature("06037"+String(i).padStart(6,"0")))
+        : [feature("06037101010")]})};
   };
-  const map=new FakeMap(),c=overlay(map,statuses);
-  c.setMetric("income");await settle();
-  assert.ok(requests.length<=24);
-  assert.match(statuses.at(-1),/additional dense sections|detail still loading/);
+  const map=new FakeMap(),control=overlay(map,statuses);
+  control.setMetric("income");await settle();
+  const geo=urls.filter(x=>x.hostname==="tigerweb.geo.census.gov");
+  assert.ok(geo.length>24,"The old 24-request navigation cutoff must not return");
+  for(const q of geo){
+    const [w,s,e,n]=q.searchParams.get("geometry").split(",").map(Number);
+    assert.ok(w>=-118.4&&e<=-118.15&&s>=33.9&&n<=34.2);
+  }
+  assert.ok(map.getSource("acs-tracts").data.features.length>0);
+  assert.match(statuses.at(-1),/additional dense sections/);
 });
 
 test("early style.load registers census source before basemap tiles finish",async()=>{
@@ -242,6 +252,6 @@ test("dense census sections fetch in parallel with a strict three-request ceilin
   assert.equal(concurrent,0);
   assert.equal(map.getSource("acs-tracts").data.features.length,1);
   assert.ok(requested.length>=5);
-  assert.ok(requested.length<=24);
+  assert.ok(requested.length<200);
   assert.ok(peak<=3,"never exceed the public service concurrency ceiling");
 });

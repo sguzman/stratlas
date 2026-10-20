@@ -88,7 +88,7 @@
       "credentials": "none",
       "cache": "up to six hours unless response directives restrict",
       "min_zoom": 13,
-      "limits": "Maximum 2,000 polygons, zoom closer if truncated"
+      "limits": "500 records per page; up to 4 pages per envelope, recursively subdivides truncated visible envelopes up to depth 5; no fixed total-call cutoff; incomplete sections are labeled and cached."
     },
     {
       "id": "tiger-tracts",
@@ -110,7 +110,7 @@
       "credentials": "none for current geographic endpoint",
       "cache": "up to 30 days unless response directives restrict",
       "min_zoom": 12,
-      "limits": "251 records requested per geographic response; >250 or explicit transfer-limit triggers subdivision (depth <=6, 24 requests per navigation). Successful coverage retained; incomplete pockets reported."
+      "limits": "Provider query asks for up to 251 tracts; >250 or truncation triggers viewport-bounded subdivision up to depth 6; at most 3 concurrent geographic requests, no fixed total per-navigation request cutoff."
     },
     {
       "id": "acs2024",

@@ -6,7 +6,7 @@ import {pathToFileURL} from "node:url";
 // Import an ESM browser module without requiring Node/npm project scaffolding.
 const file=new URL("../web/zoning.js",import.meta.url);
 const code=readFileSync(file,"utf8");
-const {createZoningOverlay}=await import("data:text/javascript,"+encodeURIComponent(code));
+const {createZoningOverlay,ZONING_CATEGORIES}=await import("data:text/javascript,"+encodeURIComponent(code));
 
 class FakeMap {
   constructor({zoom=14,viewport=[-118.26,34.03,-118.24,34.06]}={}) {
@@ -124,11 +124,72 @@ test("dense zoning requests subdivide geographic bounds and retain deduplicated 
   const overlay=create(map,[-119,33,-117,35],urls,statuses);
   map.fire("style.load");overlay.setEnabled(true);await settle();
   // Caller is never permitted to fetch geography outside the viewport.
-  assert.ok(urls.length>4 && urls.length<=24);
+  assert.ok(urls.length>4);
   for(const u of urls){
     const [w,s,e,n]=u.searchParams.get("geometry").split(",").map(Number);
     assert.ok(w>=-118.26-.01 && e<=-118.24+.01);
     assert.ok(s>=34.03-.01 && n<=34.06+.01);
   }
   assert.ok(map.getSource("la-zoning-data").data.features.length>0);
+});
+
+test("zoning legend exactly matches rendered category palette and toggles with visibility",()=>{
+  const element=tag=>({
+    tag,children:[],style:{},hidden:false,textContent:"",
+    append(...items){this.children.push(...items)},
+    replaceChildren(...items){this.children=items},
+    get childElementCount(){return this.children.length}
+  });
+  const previous=globalThis.document;globalThis.document={createElement:element};
+  try{
+    const container=element("div"),map=new FakeMap({zoom:11}),statuses=[];
+    container.hidden=true;
+    const control=createZoningOverlay(map,{
+      getRegion:()=>[-119,33,-117,35],
+      filterFeatures:input=>input,
+      onStatus:x=>statuses.push(x),legendContainer:container
+    });
+    assert.equal(container.hidden,true);
+    control.setEnabled(true);
+    assert.equal(container.hidden,false);
+    const labels=container.children[1].children;
+    assert.equal(labels.length,ZONING_CATEGORIES.length);
+    for(let i=0;i<labels.length;i++){
+      assert.equal(labels[i].children[0].style.backgroundColor,ZONING_CATEGORIES[i][1]);
+      assert.equal(labels[i].children[1].textContent,ZONING_CATEGORIES[i][0]);
+    }
+    control.setEnabled(false);
+    assert.equal(container.hidden,true);
+    control.setEnabled(true);
+    assert.equal(container.hidden,false);
+    assert.equal(container.children[1].children.length,labels.length);
+  }finally{globalThis.document=previous}
+});
+test("zoning loads beyond 24 requests and toggling partial coverage does not refetch",async()=>{
+  const map=new FakeMap({viewport:[-118.28,34.01,-118.22,34.07]});
+  const urls=[],statuses=[],focus=[-118.25231,34.0421];
+  globalThis.fetch=async url=>{
+    const u=new URL(url),[w,s,e,n]=u.searchParams.get("geometry").split(",").map(Number);
+    urls.push(u);
+    const capped=w<focus[0]&&focus[0]<e&&s<focus[1]&&focus[1]<n;
+    if(capped){
+      const offset=Number(u.searchParams.get("resultOffset"));
+      return {ok:true,json:async()=>({type:"FeatureCollection",features:
+        Array.from({length:500},(_,i)=>({type:"Feature",
+          properties:{OBJECTID:offset+i,Zoning:"C2",CATEGORY:"Commercial"},
+          geometry:geojson.features[0].geometry}))})};
+    }
+    return {ok:true,json:async()=>geojson};
+  };
+  const control=create(map,[-119,33,-117,35],urls,statuses);
+  control.setEnabled(true);
+  for(let i=0;i<100;i++){
+    await settle();
+    if(statuses.at(-1)?.includes("provider requests"))break;
+  }
+  const count=urls.length;
+  assert.ok(count>24,"No arbitrary 24-request cap for zoning");
+  assert.ok(map.getSource("la-zoning-data").data.features.length>0);
+  control.setEnabled(false);control.setEnabled(true);await settle();
+  assert.equal(urls.length,count,"Previously loaded partial window is reused");
 });

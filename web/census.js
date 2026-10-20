@@ -104,7 +104,7 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
   // Successful viewport subdivisions are remembered as geographic coverage,
   // so a pan only fetches previously unseen strips, not the whole viewport.
   const covered=[];
-  const MAX_RETAINED=3000,MAX_COVERAGE=128,MAX_GEO_CALLS=24,MAX_DEPTH=6;
+  const MAX_RETAINED=3000,MAX_COVERAGE=128,MAX_DEPTH=6;
   const report=message=>onStatus(message);
   const geokey=box=>box.map(n=>n.toFixed(5)).join(",");
   function cancel(){
@@ -238,7 +238,7 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       budget.completed++;
     }
     while((queue.length||active.size)&&current===token&&!controller.signal.aborted){
-      while(queue.length&&active.size<3&&budget.calls<MAX_GEO_CALLS){
+      while(queue.length&&active.size<3){
         const task=queue.shift();
         budget.calls++;
         const request=fetchOne(task);
@@ -250,7 +250,6 @@ export function createCensusOverlay(map,{getRegion,enrichFeatures,filterFeatures
       if(!active.size)break;
       await Promise.race(active);
     }
-    if(queue.length)budget.incomplete=true;
   }
   function applyStats(ids,data){
     const features=[];

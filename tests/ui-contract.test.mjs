@@ -16,4 +16,6 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(style.includes(".grid-canvas{"));
   assert.ok(!html.includes("preview-income"));
   assert.ok(!app.includes("preview-income"));
+  assert.ok(html.includes('id="zoning-legend"'));
+  assert.ok(app.includes('legendContainer:$("zoning-legend")'));
 });

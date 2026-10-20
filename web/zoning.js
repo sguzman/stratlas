@@ -5,16 +5,48 @@ const COVERAGE=[-118.67,33.70,-118.15,34.34]; // coarse city bbox, not jurisdict
 const PAGE_SIZE=500, MAX_PAGES=4, MIN_ZOOM=13;
 const SOURCE="la-zoning-data", FILL="la-zoning-fill", LINE="la-zoning-line";
 const empty=()=>({type:"FeatureCollection",features:[]});
+// One canonical palette powers both MapLibre and the visible zoning legend.
+export const ZONING_CATEGORIES=Object.freeze([
+  ["Agricultural","#8bcf8a"],["Commercial","#ed777e"],
+  ["Commercial-Mixed","#ca689a"],["Manufacturing","#82c5d8"],
+  ["Multiple Family Residential","#f9c14c"],["Single Family Residential","#eddf9e"],
+  ["Residential","#f3b943"],["Residential-Mixed","#ad8544"],
+  ["Open Space","#80c67d"],["Public Facilities","#87b5c1"],
+  ["Public","#6bb0c5"],["Industrial","#668ca6"],
+  ["Industrial-Mixed","#996ab0"],["Hybrid Industrial","#9071b4"],
+  ["Parking","#bcc3cb"],["Freeway","#9ea9b0"],
+  ["Other / unclassified","#9da8ae"]
+]);
 const matchColor=["match",["get","CATEGORY"],
-  "Agricultural","#8bcf8a","Commercial","#ed777e",
-  "Commercial-Mixed","#ca689a","Manufacturing","#82c5d8",
-  "Multiple Family Residential","#f9c14c","Single Family Residential","#eddf9e",
-  "Residential","#f3b943","Residential-Mixed","#ad8544",
-  "Open Space","#80c67d","Public Facilities","#87b5c1",
-  "Public","#6bb0c5","Industrial","#668ca6","Industrial-Mixed","#996ab0",
-  "Hybrid Industrial","#9071b4","Parking","#bcc3cb",
-  "Freeway","#9ea9b0","#9da8ae"
+  ...ZONING_CATEGORIES.slice(0,-1).flatMap(([name,color])=>[name,color]),
+  ZONING_CATEGORIES.at(-1)[1]
 ];
+function renderLegend(container,enabled){
+  if(!container)return;
+  container.hidden=!enabled;
+  if(!enabled)return;
+  if(container.childElementCount)return; // Build once; the palette does not vary with viewport.
+  const heading=document.createElement("div");
+  heading.className="zoning-legend-heading";
+  heading.textContent="Zoning categories";
+  const items=document.createElement("div");
+  items.className="zoning-legend-items";
+  for(const [name,color] of ZONING_CATEGORIES){
+    const item=document.createElement("div");
+    item.className="zoning-legend-item";
+    const swatch=document.createElement("span");
+    swatch.className="zoning-legend-swatch";
+    swatch.style.backgroundColor=color;
+    const text=document.createElement("span");
+    text.textContent=name;
+    item.append(swatch,text);
+    items.append(item);
+  }
+  const note=document.createElement("p");
+  note.className="meta";
+  note.textContent="Source: LA City Planning · categories shown at 42% opacity on the map.";
+  container.replaceChildren(heading,items,note);
+}
 
 function intersection(a,b) {
   const x=[Math.max(a[0],b[0]),Math.max(a[1],b[1]),Math.min(a[2],b[2]),Math.min(a[3],b[3])];
@@ -49,7 +81,7 @@ function queryUrl(b,offset) {
  * All requests are viewport intersected with selected rectangle and source
  * coverage. HTTP cache uses default browser semantics and provider headers.
  */
-export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache}) {
+export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache,legendContainer}) {
   let active=false, version=0, abort=null, pending="", currentKey="";
   const windows=new Map();
   const retained=new Map();
@@ -81,9 +113,9 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     }
     publish();
   }
-  function putCache(key,features){
+  function putCache(key,features,partial=false){
     windows.delete(key);
-    windows.set(key,features);
+    windows.set(key,{features,partial});
     if(windows.size>24)windows.delete(windows.keys().next().value);
   }
   function visible(value){
@@ -99,14 +131,13 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       paint:{"line-color":"#233645","line-opacity":0.52,"line-width":0.55}});
     visible(active);
   }
-  async function queryBox(box,controller,budget,depth=0){
+  async function queryBox(box,controller,progress,depth=0){
     const key=box.map(x=>x.toFixed(5)).join(",");
-    if(windows.has(key))return {features:windows.get(key),partial:false,cached:true};
+    if(windows.has(key))return {...windows.get(key),cached:true};
     const rows=[], seen=new Set();
     let capped=false;
     for(let page=0;page<MAX_PAGES;page++){
-      if(budget.calls>=24)return {features:rows,partial:true,cached:false};
-      budget.calls++;
+      progress.calls++;
       const url=queryUrl(box,page*PAGE_SIZE);
       const data=dataCache
         ? await dataCache.fetchJson(url,{
@@ -131,12 +162,12 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       capped=page===MAX_PAGES-1;
     }
     if(!capped){
-      putCache(key,rows);
+      putCache(key,rows,false);
       return {features:rows,partial:false,cached:false};
     }
     // A single ArcGIS query may cap results at 2,000 records. Subdivide the
     // *visible* bbox rather than silently treating those first 2,000 as all data.
-    if(depth>=2||budget.calls>=24)
+    if(depth>=5)
       return {features:rows,partial:true,cached:false};
     const [w,s,e,n]=box,mx=(w+e)/2,my=(s+n)/2;
     const quadrants=[[w,s,mx,my],[mx,s,e,my],[w,my,mx,n],[mx,my,e,n]];
@@ -150,7 +181,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     let partial=false;
     for(const child of quadrants){
       if(controller.signal.aborted)throw new DOMException("Canceled","AbortError");
-      const part=await queryBox(child,controller,budget,depth+1);
+      const part=await queryBox(child,controller,progress,depth+1);
       for(const f of part.features){
         const id=f.properties?.OBJECTID??f.id;
         if(id!==undefined)combined.set(String(id),f);
@@ -158,7 +189,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       partial||=part.partial;
     }
     const result=[...combined.values()];
-    if(!partial)putCache(key,result);
+    putCache(key,result,partial);
     return {features:result,partial,cached:false};
   }
   async function reload(){
@@ -183,23 +214,25 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     const generation=version, controller=new AbortController();
     abort=controller;pending=key;
     if(windows.has(key)){
-      merge(windows.get(key));currentKey=key;pending="";
-      tell("Zoning: "+retained.size+" retained polygons · local memory (no API request).");
+      const cached=windows.get(key);
+      merge(cached.features);currentKey=key;pending="";
+      tell("Zoning: "+retained.size+" retained polygons · session cache"+
+        (cached.partial?" · incomplete area; move closer for more":"")+".");
       return;
     }
     tell("Zoning: loading visible City Planning polygons… "+retained.size+" retained.");
     try{
-      const budget={calls:0};
-      const result=await queryBox(box,controller,budget);
+      const progress={calls:0};
+      const result=await queryBox(box,controller,progress);
       if(generation!==version||controller.signal.aborted)return;
       const clipped=JSON.parse(filterFeatures(JSON.stringify({
         type:"FeatureCollection",features:result.features
       }),...getRegion()));
       merge(clipped.features);
-      if(!result.partial)putCache(key,clipped.features);
-      currentKey=result.partial?"":key;
+      putCache(key,clipped.features,result.partial);
+      currentKey=key;
       pending="";abort=null;
-      tell("Zoning: "+retained.size+" retained polygons · "+budget.calls+
+      tell("Zoning: "+retained.size+" retained polygons · "+progress.calls+
         " provider requests"+(result.partial?" · dense area partially loaded; zoom in for more":""));
     }catch(error){
       if(controller.signal.aborted||generation!==version)return;
@@ -227,6 +260,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
   });
   function setEnabled(value){
     active=Boolean(value);
+    renderLegend(legendContainer,active);
     if(!active){
       cancel();visible(false);
       tell("Zoning hidden · "+retained.size+" polygons retained; toggle on to restore.");

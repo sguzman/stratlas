@@ -127,6 +127,7 @@ async function start() {
     getRegion:()=>region().bbox,
     filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
     dataCache,
+    legendContainer:$("zoning-legend"),
     onStatus:message=>$("overlay-status").textContent=message
   });
   $("zoning").addEventListener("change",event=>zoning.setEnabled(event.target.checked));

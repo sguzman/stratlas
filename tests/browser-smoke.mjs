@@ -37,6 +37,15 @@ try{
     return false;
   });
   assert.ok(painted,"Grid canvas must actually draw visible nontransparent lines");
+  // At the initial broad zoom there are no GIS requests; toggling still
+  // needs to expose a complete, truthful categorical legend.
+  assert.equal(await page.locator("#zoning-legend").isVisible(),false);
+  await page.locator("#zoning").check();
+  assert.equal(await page.locator("#zoning-legend").isVisible(),true);
+  assert.equal(await page.locator(".zoning-legend-item").count(),17);
+  assert.ok(await page.locator("#zoning-legend").getByText("Single Family Residential").isVisible());
+  await page.locator("#zoning").uncheck();
+  assert.equal(await page.locator("#zoning-legend").isVisible(),false);
   const initial=await page.locator("#zoom-level").textContent();
   await page.locator(".maplibregl-ctrl-zoom-in").click();
   await page.waitForFunction(old=>document.querySelector("#zoom-level")?.textContent!==old,initial,
