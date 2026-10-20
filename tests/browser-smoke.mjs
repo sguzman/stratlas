@@ -20,6 +20,32 @@ try{
   const png=Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=","base64");
   await page.route("https://tile.openstreetmap.org/**",
     route=>route.fulfill({body:png,contentType:"image/png"}));
+  // Summary APIs must be independently testable at the initial wide zoom.
+  const seen={zoning:0,parcel:0};
+  await page.route("https://services5.arcgis.com/**",route=>{
+    const url=new URL(route.request().url());
+    if(!url.searchParams.has("outStatistics"))return route.continue();
+    seen.zoning++;
+    return route.fulfill({json:{features:[{attributes:{CATEGORY:"Residential",n:23}}]}});
+  });
+  await page.route("https://cache.gis.lacounty.gov/**",route=>{
+    const url=new URL(route.request().url());
+    if(!url.searchParams.has("outStatistics"))return route.continue();
+    seen.parcel++;
+    return route.fulfill({json:{features:[{attributes:{n:34,avg_value:251000}}]}});
+  });
+  await page.route("https://api.censusreporter.org/**",
+    route=>route.fulfill({json:{data:{"05000US06037":{
+      B01001:{estimate:{B01001001:9890000,B01001026:5060000}},
+      B03002:{estimate:{B03002001:9890000,B03002012:4800000,B03002003:2600000}},
+      B19013:{estimate:{B19013001:81000}}
+    }}}}));
+  await page.route("https://tigerweb.geo.census.gov/**",
+    route=>route.fulfill({json:{type:"FeatureCollection",features:[{
+      type:"Feature",properties:{GEOID:"06037"},
+      geometry:{type:"Polygon",coordinates:[[[-118.6,33.8],[-118.1,33.8],
+        [-118.1,34.35],[-118.6,34.35],[-118.6,33.8]]]}
+    }]}}));
   await page.goto("http://127.0.0.1:8765/",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>{
     const status=document.querySelector("#grid-status")?.textContent||"";
@@ -90,7 +116,9 @@ try{
     let sum=0;for(let i=3;i<a.length;i+=4)sum+=a[i];return sum;
   });
   assert.ok(currentGridPaint>0 && gridPaint>0,"Grid overlay remains painted in both themes");
-  // At the initial broad zoom there are no GIS requests; toggling still
+  // Wide zoom may load small source-side geographic aggregates, not every polygon.
+  assert.ok(await page.locator("#cache-live").count());
+  // Toggling still
   // needs to expose a complete, truthful categorical legend.
   assert.equal(await page.locator("#zoning-legend").isVisible(),false);
   await page.locator("#zoning").check();
@@ -101,6 +129,8 @@ try{
   assert.equal(await page.locator("#zoning-legend").isVisible(),true);
   assert.equal(await page.locator(".zoning-legend-item").count(),17);
   assert.ok(await page.locator("#zoning-legend").getByText("Single Family Residential").isVisible());
+  await page.waitForFunction(()=>document.querySelector("#overlay-status")?.textContent.includes("geographic cells"),null,{timeout:12000});
+  assert.ok(seen.zoning>0,"Wide view must request server-side zoning statistics");
   await page.locator("#zoning").uncheck();
   assert.equal(await page.locator("#zoning-legend").isVisible(),false);
   assert.equal(await page.locator("#assessor-legend").isVisible(),false);
@@ -112,8 +142,16 @@ try{
     el.value="39";el.dispatchEvent(new Event("input",{bubbles:true}));
   });
   assert.equal(await page.locator("#assessor-opacity-value").textContent(),"39%");
+  await page.waitForFunction(()=>document.querySelector("#assessor-status")?.textContent.includes("geographic cells"),null,{timeout:12000});
+  assert.ok(seen.parcel>0,"Wide view must request server-side assessor statistics");
   await page.locator("#assessor").uncheck();
   assert.equal(await page.locator("#assessor-legend").isVisible(),false);
+  await page.locator("#acs-metric").selectOption("population");
+  await page.waitForFunction(()=>
+    document.querySelector("#acs-status")?.textContent.includes("county-wide summary"),
+    null,{timeout:12000});
+  assert.match(await page.locator("#acs-legend").textContent(),/County population/);
+  await page.locator("#acs-metric").selectOption("off");
   // Official USGS raster tile styles share the same region-bounded protocol.
   await page.route("https://basemap.nationalmap.gov/**",
     route=>route.fulfill({body:png,contentType:"image/png"}));

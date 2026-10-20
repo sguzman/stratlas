@@ -103,3 +103,29 @@ test("geographic API URLs must use HTTPS",async()=>{
   await assert.rejects(cache.fetchJson("http://example.org",options),/HTTPS/);
   assert.equal(calls,0);
 });
+
+test("inspection reports persistent metadata without reading response bodies",async()=>{
+  const store=storeFactory();
+  const cache=createDataCache({store,now:()=>100000,transport:async()=>
+    response({hello:"cached"})});
+  assert.deepEqual(await cache.inspect(),{available:true,entries:0,bytes:0});
+  await cache.fetchJson(url,options);
+  const snapshot=await cache.inspect();
+  assert.equal(snapshot.entries,1);
+  assert.ok(snapshot.bytes>0);
+  assert.equal(cache.stats().stored,1);
+  await cache.fetchJson(url,options);
+  assert.equal(cache.stats().hits,1);
+  assert.equal(cache.stats().network,1);
+  assert.equal(await cache.clear(),true);
+  assert.equal((await cache.inspect()).entries,0);
+});
+test("cache exposes provider prohibition without falsely claiming persistence",async()=>{
+  const store=storeFactory();
+  const cache=createDataCache({store,transport:async()=>
+    response({blocked:true},{headers:{"cache-control":"private,no-store"}})});
+  await cache.fetchJson(url,options);
+  assert.equal(cache.stats().policyBlocked,1);
+  assert.equal(cache.stats().stored,0);
+  assert.equal((await cache.inspect()).entries,0);
+});

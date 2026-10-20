@@ -3,6 +3,7 @@ import { createParcelOverlay } from "./parcel.js";
 import { createCensusOverlay } from "./census.js";
 import { createGridOverlay } from "./grid.js";
 import { createDataCache } from "./data-cache.js";
+import { createWideOverview } from "./overview.js";
 import init, {
   tile_in_region, region_area_km2, visible_grid_geojson, filter_geojson_bbox, enrich_acs_tracts
 } from "./pkg/stratlas_core.js";
@@ -135,6 +136,26 @@ async function start() {
   });
 
   const dataCache=createDataCache();
+  // Cache inspection reads only metadata, not saved response bodies.
+  let inspecting=false;
+  async function updateCacheInspection(){
+    if(inspecting)return;
+    inspecting=true;
+    try{
+      const s=dataCache.stats(),disk=await dataCache.inspect();
+      const amount=disk.available
+        ? disk.entries+" saved responses · "+(disk.bytes/1048576).toFixed(1)+" MiB"
+        : "IndexedDB unavailable";
+      $("cache-live").textContent="Geographic API cache: "+amount+
+        " · "+s.hits+" reused · "+s.network+" network responses"+
+        " · "+s.policyBlocked+" disallowed by provider headers"+
+        (s.oversize?" · "+s.oversize+" oversized":"");
+    }catch(error){
+      $("cache-live").textContent="Cache inspection unavailable: "+error.message;
+    }finally{inspecting=false}
+  }
+  void updateCacheInspection();
+  setInterval(()=>{void updateCacheInspection()},5000);
   const map=new maplibregl.Map({
     container:"map",style:styleForBase(),
     center:[-118.30,34.05],zoom:9,minZoom:2,maxZoom:19,
@@ -158,11 +179,13 @@ async function start() {
     const pct=Number(event.target.value);
     $("zoning-opacity-value").textContent=pct+"%";
     zoning.setOpacity(pct/100);
+    overview.setZoningOpacity(pct/100);
     write("zoningOpacity",String(pct));
   });
   $("zoning").addEventListener("change",event=>{
     $("zoning-controls").hidden=!event.target.checked;
     zoning.setEnabled(event.target.checked);
+    overview.setZoning(event.target.checked);
   });
   const census=createCensusOverlay(map,{
     getRegion:()=>region().bbox,
@@ -172,7 +195,10 @@ async function start() {
     onStatus:message=>$("acs-status").textContent=message,
     legendContainer:$("acs-legend")
   });
-  $("acs-metric").addEventListener("change",event=>census.setMetric(event.target.value));
+  $("acs-metric").addEventListener("change",event=>{
+    census.setMetric(event.target.value);
+    overview.setCensus(event.target.value);
+  });
   const assessor=createParcelOverlay(map,{
     getRegion:()=>region().bbox,
     filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
@@ -188,12 +214,26 @@ async function start() {
     const percent=Number(event.target.value);
     $("assessor-opacity-value").textContent=percent+"%";
     assessor.setOpacity(percent/100);
+    overview.setParcelOpacity(percent/100);
     write("assessorOpacity",String(percent));
   });
   $("assessor").addEventListener("change",event=>{
     $("assessor-controls").hidden=!event.target.checked;
     assessor.setEnabled(event.target.checked);
+    overview.setParcel(event.target.checked);
   });
+  const overview=createWideOverview(map,{
+    getRegion:()=>region().bbox,
+    filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
+    dataCache,
+    onStatus:(kind,message)=>{
+      const node=$(kind==="census"?"acs-status":
+        kind==="parcel"?"assessor-status":"overlay-status");
+      node.textContent=message;
+    }
+  });
+  overview.setZoningOpacity(storedOpacity/100);
+  overview.setParcelOpacity(assessorStored/100);
 
   // Defensive compatibility during rolling Pages/browser-cache updates:
   // one missing optional UI element must never prevent the whole map starting.
@@ -250,6 +290,7 @@ async function start() {
     zoning.onRegionChange();
     census.onRegionChange();
     assessor.onRegionChange();
+    overview.reset();
     grid.onRegionChange();
   }
   function switchBase() {
@@ -300,6 +341,8 @@ async function start() {
       zoning.clearMemory();
       census.clearMemory();
       assessor.clearMemory();
+      overview.reset(false);
+      void updateCacheInspection();
       $("cache-status").textContent=ok
         ? "Stored API responses removed. Current map remains visible; future requests reload."
         : "Persistent storage unavailable. In-memory geographic responses cleared.";

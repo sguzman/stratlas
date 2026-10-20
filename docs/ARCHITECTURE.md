@@ -33,3 +33,9 @@ The selected effective theme only changes HUD CSS variables: sidebar panels, for
 - Further place ontologies may add official jurisdiction polygons and identifiers, but existing named study rectangles must not be mislabeled as legal administrative boundaries.
 
 Data source coverage and implementation status are tracked in the [source registry](sources/README.md); source-to-layer meaning and observations are tracked in the [ontology](ontology/README.md).
+
+## Scale-aware geographic presentation and visible caching
+
+The separate `web/overview.js` adapter uses server-computed zoning counts and parcel-value statistics in at most nine repeatable bounding cells at wide zoom. It uses actual TIGERweb county polygons and Census Reporter county ACS values for a county-wide Census view. The original detailed loaders remain responsible for tract, zoning polygon and individual parcel geometry near street zoom. Overview shading is labeled as aggregate geography and does not represent parcels or legal districts. Detail appears only when meaningful, but the user can enable layers without meeting a minimum zoom cutoff.
+
+`web/data-cache.js` separates stored geographic response bodies from lightweight IndexedDB metadata for efficient eviction and live readouts. Provider Cache-Control may still forbid persistence, and tiles are cached by the browser separately. The sidebar reports real cache usage and hits rather than only claiming that caching exists.

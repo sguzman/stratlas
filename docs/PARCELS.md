@@ -10,7 +10,7 @@ The color bands are fixed nominal USD thresholds, not dynamically re-normalized 
 
 ## Browser-only loading
 
-Stratlas restricts the source to the **intersection** of the selected rectangular study region, visible viewport, and Los Angeles County pilot bounds. No outside features are prefetched. New parcel requests begin at zoom 16+, avoiding a county-wide parcel download.
+Stratlas restricts the source to the **intersection** of the selected rectangular study region, visible viewport, and Los Angeles County pilot bounds. No outside features are prefetched. At broad zoom, the map requests ArcGIS source-side summary statistics for at most nine visible, repeatable geographic cells. The summary shows the mean **tax-roll assessed land value** and the count of intersecting parcels; it is neither a market price nor a complete download of every parcel. Individual parcel geometry requests begin at zoom 16+, avoiding a county-wide bulk parcel download.
 
 The loader calls the ArcGIS \`returnIdsOnly=true\` API for intersecting parcel identifiers; then retrieves **only missing polygons** in groups of 35 with at most three simultaneous requests. As individual groups complete, geometry is added to MapLibre; visiting or zooming away retains successfully loaded parcels in browser memory. A moving camera prioritizes its newest viewport while older in-flight groups may complete. Missing IDs remain retryable.
 

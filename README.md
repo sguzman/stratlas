@@ -8,7 +8,7 @@ Rust/WebAssembly-first geographic research map. MapLibre renders the map; Rust p
 
 Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Mercator tiles above all basemaps and data overlays, using Rust/WASM geometry. Its enabled state survives reloads; at very high zoom its displayed grid level may be coarsened for clarity. Grid lines remain below MapLibre attribution, navigation controls, and popups.
 
-**Data overlays are optional.** Census estimates (zoom 12+), Los Angeles City zoning (zoom 13+), and Los Angeles County assessed parcel land values (zoom 16+) use public geographic APIs. Previously loaded features remain available across navigation. The sidebar reports source coverage, loading progress, and errors.
+**Data overlays are optional and available at broad map scales.** At wide zoom, Stratlas requests **server-side zoning/assessor summaries** and a **county-level ACS summary**, rather than downloading an entire metropolis of detailed polygons. At closer zoom, it progressively retrieves individual census tracts (12+), zoning polygons (13+), and assessor parcels (16+). Source limitations are shown in the sidebar. The Inspection panel displays actual locally stored API cache size, reuse counts, network responses, and provider-disabled caching. These summaries are not full metro coverage or a substitute for individual geometry. Previously retrieved detailed features remain in memory.
 
 ## HUD appearance
 

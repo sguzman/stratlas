@@ -5,7 +5,7 @@
 The zoning layer uses Los Angeles City Department of City Planning's ArcGIS FeatureServer layer 15:
 https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15
 
-Its published fields include OBJECTID, Zoning, and CATEGORY. The service supports viewport-envelope queries, returnIdsOnly, and GeoJSON. New geography is requested at zoom 13+ in the selected study rectangle. The [source registry](sources/README.md) owns attribution, vintage, and provider access metadata.
+Its published fields include OBJECTID, Zoning, and CATEGORY. The service supports viewport-envelope queries, returnIdsOnly, and GeoJSON. At broad zoom, Stratlas requests source-side **grouped counts by CATEGORY** for at most nine visible, reproducible geographic cells. Their color describes the most frequent category by **number of intersecting source polygons, not land area**. At zoom 13+, individual zoning polygons are retrieved for the selected visible study rectangle. The overview is a summary, not a full download of zoning geometry. The [source registry](sources/README.md) owns attribution, vintage, and provider access metadata.
 
 ## Incremental loading
 

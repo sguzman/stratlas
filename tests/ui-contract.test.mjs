@@ -39,4 +39,7 @@ test("HTML and JavaScript agree about required elements",()=>{
     "assessor-opacity","assessor-opacity-value","assessor-status"])
     assert.ok(html.includes('id="'+id+'"'),"Missing parcel UI: "+id);
   assert.ok(app.includes('createParcelOverlay'));
+  assert.ok(app.includes("createWideOverview"));
+  assert.ok(html.includes('id="cache-live"'));
+  assert.ok(html.includes("Wide views request provider summaries"));
 });

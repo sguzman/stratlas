@@ -70,7 +70,8 @@
         <div class="metric"><span>Tiles fetched</span><strong id="fetched">0</strong></div>
         <div class="metric"><span>Out-of-region tiles blocked</span><strong id="blocked">0</strong></div>
         <button type="button" id="clear-data-cache">Clear cached study data</button>
-        <p id="cache-status" class="meta" aria-live="polite">API results cached locally when provider policies allow. Basemap HTTP cache is managed by the browser.</p>
+        <p id="cache-status" class="meta" aria-live="polite">API results are saved when provider policies allow. Basemap tiles use the browser HTTP cache.</p>
+        <p id="cache-live" class="meta" role="status">Checking persistent geographic data cache…</p>
       </section>
       <section class="coming">
         <h2>Data layers</h2>
@@ -80,7 +81,7 @@
           <input id="zoning-opacity" type="range" min="0" max="100" step="1" value="42">
           <div id="zoning-legend" class="zoning-legend" aria-label="Zoning category color legend" hidden></div>
         </div>
-        <p id="overlay-status" class="meta" aria-live="polite">Off · Source: LA City Planning · visible area only · zoom 13+</p>
+        <p id="overlay-status" class="meta" aria-live="polite">Off · LA City Planning · wide-area category summaries, detailed zoning on close zoom</p>
         <label for="acs-metric" class="data-label">US Census · Los Angeles County tracts</label>
         <select id="acs-metric">
           <option value="off">Census overlay off</option>
@@ -91,15 +92,15 @@
           <option value="white">Non-Hispanic White alone (%)</option>
         </select>
         <div id="acs-legend" aria-label="Census thematic map legend"></div>
-        <p id="acs-status" class="meta" aria-live="polite">Off · ACS 2020–2024 · Census Reporter / TIGERweb · zoom 12+</p>
+        <p id="acs-status" class="meta" aria-live="polite">Off · 2020–2024 ACS · county-level summary or tract-level detail</p>
         <label class="check data-label"><input id="assessor" type="checkbox"> LA County assessed land value</label>
         <div id="assessor-controls" hidden>
           <div class="assessor-opacity-label"><label for="assessor-opacity">Parcel opacity</label><output id="assessor-opacity-value" for="assessor-opacity">66%</output></div>
           <input id="assessor-opacity" type="range" min="0" max="100" step="1" value="66">
           <div id="assessor-legend" class="assessor-legend" aria-label="Assessed parcel land value legend" hidden></div>
         </div>
-        <p id="assessor-status" class="meta" aria-live="polite">Off · LA County Assessor roll · zoom 16+ · not market prices</p>
-        <p class="meta">New Census data loads at zoom 12+, zoning at 13+, and assessor parcels at 16+. Previously loaded polygons stay available when zooming out. Source errors appear in each status.</p>
+        <p id="assessor-status" class="meta" aria-live="polite">Off · LA County Assessor · area summaries or detailed parcels · not market prices</p>
+        <p class="meta">Wide views request provider summaries instead of every feature. Zoom closer for tract, zoning-polygon, and parcel detail. Cached geographic API responses are reused when source policies permit; errors and progress appear in each layer status.</p>
         <p class="meta">Election results, household wealth, and market sale prices remain planned. No synthetic data.</p>
         <a href="https://github.com/sguzman/stratlas/blob/main/docs/sources/README.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
       </section>

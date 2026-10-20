@@ -8,10 +8,11 @@
  */
 const DB_NAME="stratlas-public-data";
 const STORE="responses";
-const DB_VERSION=1;
-const MAX_RECORDS=192;
-const MAX_TOTAL_BYTES=24*1024*1024;
-const MAX_ENTRY_BYTES=4*1024*1024;
+const META="metadata";
+const DB_VERSION=2;
+const MAX_RECORDS=768;
+const MAX_TOTAL_BYTES=128*1024*1024;
+const MAX_ENTRY_BYTES=8*1024*1024;
 
 function readRequest(request) {
   return new Promise((resolve,reject)=>{
@@ -29,6 +30,18 @@ function openDb(indexedDBImpl) {
       const db=request.result;
       if(!db.objectStoreNames.contains(STORE))
         db.createObjectStore(STORE,{keyPath:"key"});
+      if(!db.objectStoreNames.contains(META)){
+        const metadata=db.createObjectStore(META,{keyPath:"key"});
+        // Existing v1 responses are retained and indexed, not discarded.
+        const previous=request.transaction.objectStore(STORE).openCursor();
+        previous.onsuccess=()=>{
+          const cursor=previous.result;
+          if(!cursor)return;
+          const {key,bytes,saved,expires}=cursor.value;
+          metadata.put({key,bytes,saved,expires});
+          cursor.continue();
+        };
+      }
     };
     request.onsuccess=()=>{
       request.result.onversionchange=()=>request.result.close();
@@ -45,26 +58,31 @@ export function createIndexedDbStore(indexedDBImpl=globalThis.indexedDB) {
     const database=await db();
     if(!database)return null;
     try{
-      const transaction=database.transaction(STORE,mode);
+      const transaction=database.transaction([STORE,META],mode);
       const store=transaction.objectStore(STORE);
-      return await operation(store,transaction);
+      const metadata=transaction.objectStore(META);
+      return await operation(store,metadata);
     }catch{return null} // storage is optional; never break rendering
   };
   return {
     get:key=>withStore("readonly",async store=>await readRequest(store.get(key))),
-    put:entry=>withStore("readwrite",async store=>{
-      await readRequest(store.put(entry));return true;
+    put:entry=>withStore("readwrite",async (store,metadata)=>{
+      store.put(entry);
+      await readRequest(metadata.put({
+        key:entry.key,bytes:entry.bytes,saved:entry.saved,expires:entry.expires
+      }));return true;
     }),
-    remove:key=>withStore("readwrite",async store=>{
-      await readRequest(store.delete(key));return true;
+    remove:key=>withStore("readwrite",async (store,metadata)=>{
+      store.delete(key);await readRequest(metadata.delete(key));return true;
     }),
-    entries:()=>withStore("readonly",async store=>await readRequest(store.getAll())),
-    deleteMany:keys=>withStore("readwrite",async store=>{
-      for(const key of keys)store.delete(key);
+    entries:()=>withStore("readonly",async (store,metadata)=>
+      await readRequest(metadata.getAll())),
+    deleteMany:keys=>withStore("readwrite",async (store,metadata)=>{
+      for(const key of keys){store.delete(key);metadata.delete(key)}
       return true;
     }),
-    clear:()=>withStore("readwrite",async store=>{
-      await readRequest(store.clear());return true;
+    clear:()=>withStore("readwrite",async (store,metadata)=>{
+      store.clear();await readRequest(metadata.clear());return true;
     })
   };
 }
@@ -94,7 +112,7 @@ export function createDataCache({
   now=()=>Date.now()
 }={}) {
   let generation=0;
-  let hits=0,network=0;
+  let hits=0,network=0,stored=0,policyBlocked=0,oversize=0;
   const inflight=new Map();
   async function read(key,signal) {
     const entry=await store.get(key).catch(()=>null);
@@ -155,15 +173,15 @@ export function createDataCache({
       // Don't persist server errors. Map adapters validate response schemas.
       if(!value || typeof value!=="object" || value.error)return value;
       const ttl=providerFreshness(response.headers,ttlMs,now());
+      if(!ttl)policyBlocked++;
       if(ttl && currentGeneration===generation){
         try{
           const payload=JSON.stringify(value);
           const bytes=new TextEncoder().encode(payload).length;
           if(bytes>0 && bytes<=MAX_ENTRY_BYTES) {
-            await store.put({key,payload,bytes,saved:now(),expires:now()+ttl});
-            // A read-only cache eviction pass is bounded by MAX_RECORDS.
-            await trim();
-          }
+            const didStore=await store.put({key,payload,bytes,saved:now(),expires:now()+ttl});
+            if(didStore){stored++;await trim()}
+          } else if(bytes>MAX_ENTRY_BYTES){oversize++}
         }catch{/* storage quotas cannot block real data rendering */}
       }
       aborted(signal);
@@ -178,5 +196,14 @@ export function createDataCache({
     const cleared=await store.clear().catch(()=>false);
     return Boolean(cleared);
   }
-  return {fetchJson,clear,stats:()=>({hits,network})};
+  async function inspect(){
+    const rows=await store.entries().catch(()=>null);
+    if(!Array.isArray(rows))return {available:false,entries:0,bytes:0};
+    const live=rows.filter(r=>r.expires>now());
+    return {available:true,entries:live.length,
+      bytes:live.reduce((total,r)=>total+Number(r.bytes||0),0)};
+  }
+  return {fetchJson,clear,inspect,stats:()=>({
+    hits,network,stored,policyBlocked,oversize
+  })};
 }
