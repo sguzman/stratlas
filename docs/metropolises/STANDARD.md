@@ -6,7 +6,7 @@ A metropolitan area is Stratlas's repeatable research unit. The [machine-readabl
 
 A metro may include multiple cities, suburbs, counties, planning jurisdictions and statistical units. Its identity and official delineation must cite an appropriate authority and reference period when available. A study rectangle is merely a request/camera envelope. A city's zoning source and a county's assessor source can support part of a metro without covering its entire urbanized area.
 
-The Los Angeles pilot is a starting implementation, not proof of full metropolitan coverage or that every category has end-to-end live verification.
+The Los Angeles pilot is a starting implementation, not proof of full metropolitan coverage or that every category has end-to-end live verification. See the [Los Angeles specimen profile](los-angeles.md) for current capability statuses and source references, alongside [los-angeles.json](los-angeles.json) for authoritative structured metadata.
 
 ## Required common capabilities
 

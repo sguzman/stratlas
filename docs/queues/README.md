@@ -24,7 +24,7 @@ The user's instruction to finish all downstream work for a specific metro is suf
 | `map-presentation` | Visible map controls, legends and inspection semantics | No |
 | `verification-and-provenance` | Source validation, automated tests and documentation audit | No |
 
-See [tasks.json](tasks.json) for currently instantiated downstream tasks. The initial task queues are deliberately empty; their [blueprint](dispatch-blueprint.json) is not an active backlog.
+See the [human-readable queue status](STATUS.md) and [tasks.json](tasks.json) for currently instantiated downstream tasks. The initial task queues are deliberately empty; their [blueprint](dispatch-blueprint.json) is not an active backlog.
 
 ## Los Angeles intake
 

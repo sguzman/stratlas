@@ -25,9 +25,11 @@ Open http://localhost:8080/. GitHub Actions deploys updates from main.
 ## Reference
 
 - [Constitution](CONSTITUTION.md) · [Agent guide](AGENTS.md)
-- [Metropolitan specimen standard](docs/metropolises/STANDARD.md) · [specimen and work queues](docs/queues/README.md)
+- [Metropolitan specimen standard](docs/metropolises/STANDARD.md) · [Los Angeles specimen profile](docs/metropolises/los-angeles.md)
+- [Queue policy](docs/queues/README.md) · [current queue status](docs/queues/STATUS.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Place and data-source ontology](docs/ontology/README.md) · [machine-readable source/layer bindings](docs/ontology/sources.json)
+- [Place and data-source ontology](docs/ontology/README.md) · [readable places](docs/ontology/PLACES.md), [measurements](docs/ontology/MEASUREMENTS.md), and [sources](docs/ontology/SOURCES.md)
+- [Machine-readable ontology](docs/ontology/model.json) · [source/layer bindings](docs/ontology/sources.json)
 - [Source registry](docs/sources/README.md) and [machine-readable data source catalog](docs/sources/catalog.json)
 - [Census/ACS](docs/CENSUS.md) · [Zoning](docs/ZONING.md) · [Assessed parcels](docs/PARCELS.md) · [Cache](docs/CACHE.md)
 

@@ -23,6 +23,7 @@ Use the known queue names: `boundary-and-identity`, `source-discovery`, `ontolog
 - Every specimen targets the same categories, including basemaps, metro geography, zoning/land use, demographics/income, parcels and assessed values, and source-backed visualization. See the capability IDs in `docs/metropolises/standard.json`.
 - Classify sources as connected, browser-verified, QA-pending, or research-only based on evidence. Source discovery does not imply data retrieval. Metro completeness is a capability-by-capability assessment, not a single optimistic flag.
 - Maintain source IDs and provider-scoped feature IDs; never join unrelated OBJECTIDs, substitute a county for a metropolis, assert exact legal boundaries from camera rectangles, or conflate assessed value with market sale price.
+- Keep human-readable Markdown companions for public machine-readable metropolitan specimens, ontology inventories, source listings, and queue status. JSON remains authoritative; consistency tests detect ID/status drift. Markdown documentation updates do not authorize queue processing.
 - Respect licensing, attribution, access requirements, throttling, terms of use, and provider cache headers. No invented datasets, uncontrolled scraping, entire-country mirrors, secrets, or unnecessary sensitive attributes.
 - A source's exact jurisdiction and vintage may make a metro capability partial or unavailable. Document that rather than fabricating comparable measurements.
 

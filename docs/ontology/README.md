@@ -6,15 +6,21 @@ Stratlas has two complementary parts: its **presentation layer** draws maps and 
 
 | File | Responsibility |
 | --- | --- |
-| [model.json](model.json) | Controlled vocabulary: entity types, source/delivery kinds, identity rules, time models and relationships |
-| [places.json](places.json) | The named study presets in the application; WGS84 rectangles with conceptual place identities |
-| [sources.json](sources.json) | Every registered source linked to a dataset, feature type, identity namespace, adapter and presented map layer |
-| [measurements.json](measurements.json) | Units, source field names, computed ratios, periods, assessment meanings and suppression rules |
+| [MODEL.md](MODEL.md) | **Human-readable** explanation of entity, relationship, source, delivery, and time models |
+| [model.json](model.json) | Machine-readable controlled vocabulary: entity types, source/delivery kinds, identity rules, time models and relationships |
+| [PLACES.md](PLACES.md) | **Human-readable** place catalog and study rectangles |
+| [places.json](places.json) | Machine-readable named study presets; WGS84 rectangles with conceptual place identities |
+| [SOURCES.md](SOURCES.md) | **Human-readable** source inventory, original provider links, coverage, caching, and verification states |
+| [sources.json](sources.json) | Machine-readable source links to datasets, identity namespaces, adapters and layers |
+| [MEASUREMENTS.md](MEASUREMENTS.md) | **Human-readable** measurement dictionary with units, fields, periods, and limitations |
+| [measurements.json](measurements.json) | Machine-readable field names, units, formula components and interpretation rules |
 | [source-bindings.schema.json](source-bindings.schema.json) | Formal JSON Schema for the source-to-layer manifest |
 | [../sources/catalog.json](../sources/catalog.json) | **Authoritative provenance registry:** provider URL, attribution, access restrictions, date, cache policy and verification status |
 | [../sources/README.md](../sources/README.md) | Human-facing provider inventory and status definitions |
 
 Provider endpoints and licensing are defined **once** in the source registry; the ontology uses matching source IDs. No keys, actual provider datasets, response bodies, or cached geographic tiles belong in the repository.
+
+**Reading order:** [Places](PLACES.md) → [Sources](SOURCES.md) → [Measurements](MEASUREMENTS.md) → [Model](MODEL.md). The JSON files remain authoritative; corresponding Markdown is kept consistent by repository tests.
 
 ## Entity model
 
@@ -57,7 +63,7 @@ ACS income is **not wealth**; tract aggregates are not individual attributes. As
 
 ## Metropolitan specimens and authorization
 
-Metropolitan areas are repeatable geographic research specimens, with a shared [capability matrix](../metropolises/STANDARD.md) and metropolitan specimen records under [docs/metropolises/](../metropolises/). A specimen may span several legal jurisdictions and source coverages; the ontology retains those separate geographic meanings. Los Angeles is the existing pilot, but its metro boundary is not yet formally delineated.
+Metropolitan areas are repeatable geographic research specimens, with a shared [capability matrix](../metropolises/STANDARD.md) and metropolitan specimen records under [docs/metropolises/](../metropolises/). A specimen may span several legal jurisdictions and source coverages; the ontology retains those separate geographic meanings. Los Angeles is the existing pilot, but its metro boundary is not yet formally delineated. Read the [Los Angeles specimen profile](../metropolises/los-angeles.md) for a human-readable capability-by-capability assessment and [queue status](../queues/STATUS.md) for the intake and task inventories.
 
 Specimen intake and downstream execution are separate: adding a metropolitan specimen to the [specimen queue](../queues/specimens.json) never instantiates tasks or runs source adapters; processing that queue item only creates tasks in the appropriate [downstream queues](../queues/tasks.json), with subsequent work requiring explicit authorization. The [queue policy](../queues/README.md), [constitution](../../CONSTITUTION.md) and [agent instructions](../../AGENTS.md) apply.
 
