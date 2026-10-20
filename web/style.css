@@ -1,47 +1,155 @@
-:root {color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#101a25;color:#e8f1f5}
+/* Presentation UI only: map tiles, vector fills, grid, popups and geographic data
+   retain their own unaffected paint settings and color palettes. */
+:root[data-hud-theme="dark"]{
+  color-scheme:dark;
+  --hud-page-bg:#101a25;
+  --hud-page-text:#e8f1f5;
+  --hud-sidebar-bg:#142230;
+  --hud-sidebar-border:#314458;
+  --hud-eyebrow:#76b8cd;
+  --hud-brand-accent:#65bbd0;
+  --hud-header-muted:#a7bac6;
+  --hud-section-border:#2c4051;
+  --hud-section-heading:#b9ced9;
+  --hud-label:#a9bbc8;
+  --hud-field-bg:#223646;
+  --hud-field-text:#eef7fc;
+  --hud-field-border:#446075;
+  --hud-focus:#68cde8;
+  --hud-button-border:#557389;
+  --hud-button-bg:#2a4558;
+  --hud-button-text:#eaf4fb;
+  --hud-button-hover:#33576d;
+  --hud-meta:#91a9b8;
+  --hud-link:#8acbdd;
+  --hud-summary:#b8cdd8;
+  --hud-checkbox-label:#d8e7ee;
+  --hud-checkbox-accent:#5aafc4;
+  --hud-metric-border:#293d4c;
+  --hud-metric-text:#aabdc9;
+  --hud-metric-value:#eaf5fa;
+  --hud-footer:#7794a6;
+  --hud-chip-bg:#142434e6;
+  --hud-chip-border:#446276;
+  --hud-chip-text:#e8f5fa;
+  --hud-chip-shadow:#0c151b55;
+  --hud-status-bg:#142434ea;
+  --hud-status-border:#45647b;
+  --hud-status-text:#c9dee9;
+  --hud-data-label:#bbd4e1;
+  --hud-legend-label:#aac5d2;
+  --hud-legend-border:#ffffff24;
+  --hud-legend-range:#9db4c0;
+  --hud-zoom-text:#ffe6b7;
+  --hud-panel-border:#354d60;
+  --hud-panel-bg:#182b3a;
+  --hud-panel-title:#e2edf4;
+  --hud-panel-item:#c6d7e2;
+  --hud-swatch-border:#ffffff55;
+  --hud-opacity-label:#b8cbd6;
+  --hud-opacity-value:#e4f2f9;
+  --hud-slider-accent:#68bbd1;
+  --hud-hover-bg:#355267;
+  --hud-hover-text:#fff;
+  --hud-hover-border:#80aeca;
+}
+:root[data-hud-theme="light"]{
+  color-scheme:light;
+  --hud-page-bg:#f3f6f9;
+  --hud-page-text:#182b38;
+  --hud-sidebar-bg:#fbfdff;
+  --hud-sidebar-border:#c6d6e1;
+  --hud-eyebrow:#1a617b;
+  --hud-brand-accent:#177e9d;
+  --hud-header-muted:#536a7a;
+  --hud-section-border:#d6e2ea;
+  --hud-section-heading:#36546a;
+  --hud-label:#486375;
+  --hud-field-bg:#ffffff;
+  --hud-field-text:#173447;
+  --hud-field-border:#9ab5c6;
+  --hud-focus:#0c789b;
+  --hud-button-border:#a4bccb;
+  --hud-button-bg:#e4f0f7;
+  --hud-button-text:#183c52;
+  --hud-button-hover:#d3e6f2;
+  --hud-meta:#526d7e;
+  --hud-link:#075b87;
+  --hud-summary:#416177;
+  --hud-checkbox-label:#28465a;
+  --hud-checkbox-accent:#167f9c;
+  --hud-metric-border:#d4e1e8;
+  --hud-metric-text:#526d7d;
+  --hud-metric-value:#1b4055;
+  --hud-footer:#638093;
+  --hud-chip-bg:#fffffff2;
+  --hud-chip-border:#a6bece;
+  --hud-chip-text:#1b4055;
+  --hud-chip-shadow:#162d3d25;
+  --hud-status-bg:#fffffff0;
+  --hud-status-border:#9eb8c9;
+  --hud-status-text:#29495f;
+  --hud-data-label:#335b70;
+  --hud-legend-label:#446d81;
+  --hud-legend-border:#2b536545;
+  --hud-legend-range:#5b7888;
+  --hud-zoom-text:#83530b;
+  --hud-panel-border:#c9d9e3;
+  --hud-panel-bg:#edf4f8;
+  --hud-panel-title:#29495f;
+  --hud-panel-item:#38596c;
+  --hud-swatch-border:#38556766;
+  --hud-opacity-label:#466578;
+  --hud-opacity-value:#244b62;
+  --hud-slider-accent:#1c819d;
+  --hud-hover-bg:#d8e9f3;
+  --hud-hover-text:#173c55;
+  --hud-hover-border:#7eaabd;
+}
+:root {font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--hud-page-bg);color:var(--hud-page-text);--map-outside-bg:#15212b}
 *{box-sizing:border-box}
 body{margin:0;min-width:300px}
 .shell{display:grid;grid-template-columns:330px minmax(0,1fr);height:100dvh;min-height:520px}
-.sidebar{padding:28px 23px 17px;background:#142230;border-right:1px solid #314458;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.sidebar{padding:28px 23px 17px;background:var(--hud-sidebar-bg);border-right:1px solid var(--hud-sidebar-border);overflow-y:auto;display:flex;flex-direction:column;gap:2px}
 header{padding-bottom:15px}
-.eyebrow{font-size:10px;letter-spacing:.18em;font-weight:800;color:#76b8cd}
+.eyebrow{font-size:10px;letter-spacing:.18em;font-weight:800;color:var(--hud-eyebrow)}
 h1{font-size:38px;letter-spacing:-.055em;line-height:1.2;margin:5px 0}
-.dot{color:#65bbd0}
-header p{color:#a7bac6;line-height:1.5;font-size:13px;margin:10px 0 0}
-section{padding:21px 0;border-top:1px solid #2c4051}
-h2{font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.11em;color:#b9ced9;margin:0 0 12px}
-label{display:block;font-size:12px;color:#a9bbc8;margin-bottom:8px}
-select,input:not([type="checkbox"]){background:#223646;color:#eef7fc;border:1px solid #446075;width:100%;padding:11px 12px;border-radius:7px;font:inherit;font-size:13px}
-select:focus,input:focus,button:focus-visible{outline:2px solid #68cde8;outline-offset:2px}
-button{padding:10px 12px;border:1px solid #557389;background:#2a4558;color:#eaf4fb;border-radius:7px;cursor:pointer;font-weight:650;font-size:12px;margin-top:10px;width:100%;text-align:center}
-button:hover{background:#33576d}
-.meta{font-size:11.5px;line-height:1.5;color:#91a9b8;margin:10px 0 0}
-a{color:#8acbdd;text-decoration:none;font-size:12px}
+.dot{color:var(--hud-brand-accent)}
+header p{color:var(--hud-header-muted);line-height:1.5;font-size:13px;margin:10px 0 0}
+section{padding:21px 0;border-top:1px solid var(--hud-section-border)}
+h2{font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.11em;color:var(--hud-section-heading);margin:0 0 12px}
+label{display:block;font-size:12px;color:var(--hud-label);margin-bottom:8px}
+select,input:not([type="checkbox"]){background:var(--hud-field-bg);color:var(--hud-field-text);border:1px solid var(--hud-field-border);width:100%;padding:11px 12px;border-radius:7px;font:inherit;font-size:13px}
+select:focus,input:focus,button:focus-visible{outline:2px solid var(--hud-focus);outline-offset:2px}
+button{padding:10px 12px;border:1px solid var(--hud-button-border);background:var(--hud-button-bg);color:var(--hud-button-text);border-radius:7px;cursor:pointer;font-weight:650;font-size:12px;margin-top:10px;width:100%;text-align:center}
+button:hover{background:var(--hud-button-hover)}
+.meta{font-size:11.5px;line-height:1.5;color:var(--hud-meta);margin:10px 0 0}
+a{color:var(--hud-link);text-decoration:none;font-size:12px}
 a:hover{text-decoration:underline}
 details{margin-top:12px}
-summary{font-size:12px;color:#b8cdd8;cursor:pointer}
+summary{font-size:12px;color:var(--hud-summary);cursor:pointer}
 details label{margin-top:13px}
-.check{display:flex;gap:9px;align-items:center;color:#d8e7ee;cursor:pointer;margin:3px 0 12px}
-.check input{accent-color:#5aafc4}
-.metric{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #293d4c;color:#aabdc9;font-size:12px}
-.metric strong{font-variant-numeric:tabular-nums;color:#eaf5fa}
+.check{display:flex;gap:9px;align-items:center;color:var(--hud-checkbox-label);cursor:pointer;margin:3px 0 12px}
+.check input{accent-color:var(--hud-checkbox-accent)}
+.metric{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--hud-metric-border);color:var(--hud-metric-text);font-size:12px}
+.metric strong{font-variant-numeric:tabular-nums;color:var(--hud-metric-value)}
 .coming{margin-bottom:15px}
-footer{margin-top:auto;display:flex;flex-direction:column;gap:10px;font-size:11px;color:#7794a6}
-main{position:relative;min-width:0;background:#15212b}
+footer{margin-top:auto;display:flex;flex-direction:column;gap:10px;font-size:11px;color:var(--hud-footer)}
+main{position:relative;min-width:0;background:var(--map-outside-bg)}
 #map{position:absolute;inset:0}
 .map-top{position:absolute;top:16px;left:16px;right:16px;display:flex;gap:10px;pointer-events:none;flex-wrap:wrap}
-.map-top span{padding:9px 12px;border-radius:7px;background:#142434e6;border:1px solid #446276;color:#e8f5fa;font-size:12px;box-shadow:0 3px 15px #0c151b55}
+.map-top span{padding:9px 12px;border-radius:7px;background:var(--hud-chip-bg);border:1px solid var(--hud-chip-border);color:var(--hud-chip-text);font-size:12px;box-shadow:0 3px 15px var(--hud-chip-shadow)}
 #coordinates{margin-left:auto;font-variant-numeric:tabular-nums}
-#status{position:absolute;bottom:35px;left:16px;max-width:min(420px,calc(100% - 32px));padding:9px 12px;background:#142434ea;border:1px solid #45647b;border-radius:7px;font-size:11px;color:#c9dee9;pointer-events:none}
+#status{position:absolute;bottom:35px;left:16px;max-width:min(420px,calc(100% - 32px));padding:9px 12px;background:var(--hud-status-bg);border:1px solid var(--hud-status-border);border-radius:7px;font-size:11px;color:var(--hud-status-text);pointer-events:none}
 .maplibregl-ctrl-attrib{font-size:11px!important}
 @media(max-width:730px){.shell{grid-template-columns:1fr;grid-template-rows:300px minmax(400px,1fr);height:auto;min-height:100dvh}.sidebar{height:300px;display:block;padding:16px 18px}.sidebar section{padding:14px 0}.sidebar header{padding-bottom:10px}h1{font-size:28px}main{height:calc(100dvh - 300px);min-height:400px}.map-top{top:8px;left:8px;right:8px}.map-top span{font-size:10px}}
 
 /* Small, neutral choropleth key; displayed only for active ACS metrics. */
-.data-label{margin-top:19px;color:#bbd4e1;font-weight:600}
+.data-label{margin-top:19px;color:var(--hud-data-label);font-weight:600}
 #acs-legend{margin-top:12px}
-.legend-label{font-size:11px;color:#aac5d2;margin-bottom:7px}
-.legend-gradient{height:9px;border-radius:4px;border:1px solid #ffffff24}
-.legend-range{display:flex;justify-content:space-between;font-size:10px;color:#9db4c0;margin-top:5px}
+.legend-label{font-size:11px;color:var(--hud-legend-label);margin-bottom:7px}
+.legend-gradient{height:9px;border-radius:4px;border:1px solid var(--hud-legend-border)}
+.legend-range{display:flex;justify-content:space-between;font-size:10px;color:var(--hud-legend-range);margin-top:5px}
 #acs-legend .meta{margin-top:5px}
 
 .grid-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;z-index:3;pointer-events:none}
@@ -50,40 +158,57 @@ main{position:relative;min-width:0;background:#15212b}
 #status{z-index:4}
 
 /* Move vital zoom information out from underneath the MapLibre navigation buttons. */
-#zoom-level{font-weight:750;color:#ffe6b7;white-space:nowrap}
+#zoom-level{font-weight:750;color:var(--hud-zoom-text);white-space:nowrap}
 #coordinates{margin-right:66px}
 @media(max-width:730px){#coordinates{display:none}}
 
 /* Legend shares the exact categorical palette used by the zoning renderer. */
-.zoning-legend{margin:9px 0 14px;border:1px solid #354d60;border-radius:8px;padding:10px 9px;background:#182b3a}
+.zoning-legend{margin:9px 0 14px;border:1px solid var(--hud-panel-border);border-radius:8px;padding:10px 9px;background:var(--hud-panel-bg)}
 .zoning-legend[hidden]{display:none}
-.zoning-legend-heading{font-size:12px;font-weight:750;color:#e2edf4;margin-bottom:10px}
+.zoning-legend-heading{font-size:12px;font-weight:750;color:var(--hud-panel-title);margin-bottom:10px}
 .zoning-legend-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 8px}
-.zoning-legend-item{min-width:0;display:flex;align-items:flex-start;gap:6px;color:#c6d7e2;font-size:10.5px;line-height:1.3;overflow-wrap:anywhere}
-.zoning-legend-swatch{display:block;flex:0 0 13px;width:13px;height:13px;border:1px solid #ffffff55;border-radius:3px}
+.zoning-legend-item{min-width:0;display:flex;align-items:flex-start;gap:6px;color:var(--hud-panel-item);font-size:10.5px;line-height:1.3;overflow-wrap:anywhere}
+.zoning-legend-swatch{display:block;flex:0 0 13px;width:13px;height:13px;border:1px solid var(--hud-swatch-border);border-radius:3px}
 .zoning-legend .meta{margin-top:11px}
 
 #zoning-controls[hidden]{display:none}
 #zoning-controls{margin:5px 0 12px}
 #zoning-controls row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-#zoning-controls row label{margin-bottom:5px;color:#b8cbd6}
-#zoning-opacity-value{font-size:12px;font-variant-numeric:tabular-nums;color:#e4f2f9}
-#zoning-opacity{display:block;width:100%;margin:4px 0 12px;accent-color:#68bbd1;cursor:pointer}
+#zoning-controls row label{margin-bottom:5px;color:var(--hud-opacity-label)}
+#zoning-opacity-value{font-size:12px;font-variant-numeric:tabular-nums;color:var(--hud-opacity-value)}
+#zoning-opacity{display:block;width:100%;margin:4px 0 12px;accent-color:var(--hud-slider-accent);cursor:pointer}
 .zoning-legend-item{cursor:crosshair;border-radius:4px;padding:2px}
-.zoning-legend-item:hover,.zoning-legend-item:focus-visible{background:#355267;color:#fff;outline:1px solid #80aeca}
+.zoning-legend-item:hover,.zoning-legend-item:focus-visible{background:var(--hud-hover-bg);color:var(--hud-hover-text);outline:1px solid var(--hud-hover-border)}
 
 .zoning-opacity-label{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.zoning-opacity-label label{margin-bottom:5px;color:#b8cbd6}
+.zoning-opacity-label label{margin-bottom:5px;color:var(--hud-opacity-label)}
 
 /* County assessor parcel value visualization; controls remain hidden when off. */
 #assessor-controls[hidden],.assessor-legend[hidden]{display:none}
 #assessor-controls{margin:5px 0 13px}
 .assessor-opacity-label{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.assessor-opacity-label label{margin-bottom:5px;color:#b8cbd6}
-#assessor-opacity-value{color:#e4f2f9;font-size:12px;font-variant-numeric:tabular-nums}
-#assessor-opacity{display:block;width:100%;margin:4px 0 12px;accent-color:#68bbd1;cursor:pointer}
-.assessor-legend{margin:9px 0 13px;padding:10px;border:1px solid #354d60;border-radius:8px;background:#182b3a}
+.assessor-opacity-label label{margin-bottom:5px;color:var(--hud-opacity-label)}
+#assessor-opacity-value{color:var(--hud-opacity-value);font-size:12px;font-variant-numeric:tabular-nums}
+#assessor-opacity{display:block;width:100%;margin:4px 0 12px;accent-color:var(--hud-slider-accent);cursor:pointer}
+.assessor-legend{margin:9px 0 13px;padding:10px;border:1px solid var(--hud-panel-border);border-radius:8px;background:var(--hud-panel-bg)}
 .assessor-legend>strong{display:block;font-size:12px;margin-bottom:10px}
 .assessor-legend-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.assessor-legend-item{display:flex;align-items:center;gap:7px;min-width:0;font-size:10.5px;color:#c6d7e2}
-.assessor-legend-swatch{display:block;flex:0 0 14px;height:14px;width:14px;border:1px solid #ffffff55;border-radius:3px}
+.assessor-legend-item{display:flex;align-items:center;gap:7px;min-width:0;font-size:10.5px;color:var(--hud-panel-item)}
+.assessor-legend-swatch{display:block;flex:0 0 14px;height:14px;width:14px;border:1px solid var(--hud-swatch-border);border-radius:3px}
+
+/* Navigation and attribution are HUD controls overlaid on the map, not map data. */
+main .maplibregl-ctrl-group{
+  background:var(--hud-chip-bg);
+  border:1px solid var(--hud-chip-border);
+  box-shadow:0 3px 12px var(--hud-chip-shadow);
+}
+main .maplibregl-ctrl-group button{background:transparent;color:var(--hud-chip-text);width:30px;height:30px;margin:0;padding:0;border:0;border-radius:0}
+main .maplibregl-ctrl-group button:hover{background:var(--hud-button-hover)}
+main .maplibregl-ctrl-group button+button{border-top:1px solid var(--hud-chip-border)}
+:root[data-hud-theme="dark"] main .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:invert(1)}
+main .maplibregl-ctrl-attrib{
+  background:var(--hud-chip-bg);
+  color:var(--hud-chip-text);
+}
+main .maplibregl-ctrl-attrib a{color:var(--hud-link)}
+.appearance select{margin-bottom:0}

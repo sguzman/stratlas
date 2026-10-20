@@ -10,6 +10,12 @@ Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Me
 
 **Data overlays are optional.** Census estimates (zoom 12+), Los Angeles City zoning (zoom 13+), and Los Angeles County assessed parcel land values (zoom 16+) use public geographic APIs. Previously loaded features remain available across navigation. The sidebar reports source coverage, loading progress, and errors.
 
+## HUD appearance
+
+The **Appearance → HUD color theme** selector has **System** (default), **Light**, and **Dark** modes. The browser's `prefers-color-scheme` media query controls System mode, which updates when the browser reports an OS theme change; manual overrides are saved in browser local storage. For darkman on Linux, the XDG desktop Settings portal must forward its light/dark preference to Chromium or another browser. Stratlas cannot read darkman's private process or socket directly.
+
+Only HUD surfaces (sidebar, labels, legends, status chips, and map navigation chrome) change. **Basemap imagery, geographic features and classifications, polygon fill colors, the tile grid, and geographic source selection remain unchanged.** The appearance setting never requests extra GIS data.
+
 ## Development
 
 Requires Rust stable, wasm32-unknown-unknown target, wasm-pack, and a local HTTP server. No npm or server-side database.

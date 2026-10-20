@@ -20,6 +20,12 @@ Basemap tiles use fetch with browser default HTTP caching, honoring provider Cac
 
 Implemented: public geographic JSON requests use optional IndexedDB caching with versioned namespaces and per-source retention ceilings, bounded by upstream HTTP directives, and 192-record/24 MiB capacity. A clear-cache control is available. Basemap tiles remain in the browser's ordinary HTTP cache. No persistent data server is required. See [CACHE.md](CACHE.md).
 
+## HUD appearance and system integration
+
+`web/hud-theme.js` applies the saved `system`, `light`, or `dark` mode before CSS is loaded. In `system` mode it watches `matchMedia("(prefers-color-scheme: dark)")` for browser-reported OS changes, including supported Linux XDG portal configurations. The preference is stored locally under `stratlas:hudTheme`; invalid or unavailable storage defaults to system.
+
+The selected effective theme only changes HUD CSS variables: sidebar panels, form controls, legends, status chips and MapLibre navigation chrome. It never calls MapLibre's `setStyle`, modifies map data-layer paint, restarts the tile protocol, or changes the orange XYZ grid. Chromium tests exercise both media preferences, manual overrides, reload persistence and unchanged map-stage background.
+
 ## Explicitly pending integrations
 
 - Census/TIGERweb overlay adapters are implemented, but end-to-end *live* Census browser verification remains pending in the source catalog.

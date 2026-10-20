@@ -9,6 +9,15 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(ids.length>=15);
   for(const id of new Set(ids))
     assert.ok(html.includes('id="'+id+'"'),"Missing DOM element: "+id);
+  assert.ok(html.includes('id="hud-theme"'));
+  for(const value of ["system","light","dark"])
+    assert.ok(html.includes('value="'+value+'"'));
+  assert.ok(html.indexOf("./hud-theme.js")<html.indexOf("./style.css"),
+    "Theme must initialize before CSS to prevent flash");
+  assert.ok(html.includes('id="hud-theme-status"'));
+  assert.ok(style.includes(':root[data-hud-theme="light"]'));
+  assert.ok(style.includes(':root[data-hud-theme="dark"]'));
+  assert.ok(style.includes('main .maplibregl-ctrl-group'));
   assert.ok(html.includes('id="grid-canvas"'));
   assert.ok(html.includes('id="zoom-level"'));
   assert.ok(app.includes("findOrCreateGridCanvas()"));

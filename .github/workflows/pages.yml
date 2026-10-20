@@ -29,13 +29,14 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check web/app.js
+          node --check web/hud-theme.js
           node --check web/zoning.js
           node --check web/census.js
           node --check web/parcel.js
           node --check web/data-cache.js
           node --check web/grid.js
       - name: Test API overlay scope and lifecycle
-        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs tests/ontology.test.mjs tests/governance.test.mjs tests/readable-docs.test.mjs tests/ui-contract.test.mjs tests/parcel.test.mjs tests/basemaps.test.mjs
+        run: node --test tests/zoning.test.mjs tests/census.test.mjs tests/data-cache.test.mjs tests/grid.test.mjs tests/sources.test.mjs tests/ontology.test.mjs tests/governance.test.mjs tests/readable-docs.test.mjs tests/hud-theme.test.mjs tests/ui-contract.test.mjs tests/parcel.test.mjs tests/basemaps.test.mjs
       - name: Test spatial core
         run: cargo test --workspace
       - name: Install wasm-pack
@@ -50,6 +51,7 @@ jobs:
           test -f web/pkg/stratlas_core.js
           test -f web/pkg/stratlas_core_bg.wasm
           grep -q "app.js?v=${GITHUB_SHA}" web/index.html
+          grep -q "hud-theme.js?v=${GITHUB_SHA}" web/index.html
           grep -q "stratlas_core_bg.wasm?v=${GITHUB_SHA}" web/pkg/stratlas_core.js
       - name: Headless browser startup and grid smoke test
         run: |

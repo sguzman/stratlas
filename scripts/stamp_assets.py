@@ -16,7 +16,7 @@ def change(path, before, after):
     assert before in source, f"Missing expected asset: {before} in {path}"
     file.write_text(source.replace(before, after))
 
-for kind, filename in (("href", "style.css"), ("src", "app.js")):
+for kind, filename in (("href", "style.css"), ("src", "app.js"), ("src", "hud-theme.js")):
     before = kind + '="./' + filename + '"'
     change("web/index.html", before,
            kind + '="./' + filename + '?v=' + version + '"')

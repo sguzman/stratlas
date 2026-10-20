@@ -7,6 +7,7 @@
   <title>Stratlas · Geographic research</title>
   <meta name="description" content="Region-bounded interactive mapping, driven by Rust and WebAssembly.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.5.0/dist/maplibre-gl.css">
+  <script src="./hud-theme.js"></script>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -17,6 +18,16 @@
         <h1>Stratlas<span class="dot">.</span></h1>
         <p>Study places through geographic layers, without downloading the world.</p>
       </header>
+      <section class="appearance">
+        <h2>Appearance</h2>
+        <label for="hud-theme">HUD color theme</label>
+        <select id="hud-theme">
+          <option value="system" selected>System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+        <p id="hud-theme-status" class="meta" aria-live="polite">System</p>
+      </section>
       <section>
         <h2>Study region</h2>
         <label for="region">Limit geographic tile requests to</label>

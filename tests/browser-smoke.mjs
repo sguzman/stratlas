@@ -37,6 +37,53 @@ try{
     return false;
   });
   assert.ok(painted,"Grid canvas must actually draw visible nontransparent lines");
+  // HUD appearance is independent from tiles, polygon paints, and the grid.
+  const hud=page.locator("#hud-theme");
+  assert.deepEqual(await hud.locator("option").evaluateAll(
+    options=>options.map(el=>el.value)),["system","light","dark"]);
+  assert.equal(await hud.inputValue(),"system","System must be the default");
+  await page.emulateMedia({colorScheme:"light"});
+  await page.waitForFunction(()=>document.documentElement.dataset.hudTheme==="light");
+  const mapSurface=await page.locator("main").evaluate(el=>getComputedStyle(el).backgroundColor);
+  const gridPaint=await page.locator("#grid-canvas").evaluate(el=>{
+    const a=el.getContext("2d").getImageData(0,0,el.width,el.height).data;
+    let sum=0;
+    for(let i=3;i<a.length;i+=4)sum+=a[i];
+    return sum;
+  });
+  const lightSidebar=await page.locator(".sidebar").evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.equal(lightSidebar,"rgb(251, 253, 255)");
+  assert.equal(await page.locator("#hud-theme-status").textContent(),"System · browser reports light");
+  await page.emulateMedia({colorScheme:"dark"});
+  await page.waitForFunction(()=>document.documentElement.dataset.hudTheme==="dark");
+  const darkSidebar=await page.locator(".sidebar").evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.equal(darkSidebar,"rgb(20, 34, 48)");
+  assert.notEqual(lightSidebar,darkSidebar);
+  assert.equal(await page.locator("#hud-theme-status").textContent(),"System · browser reports dark");
+  await hud.selectOption("light");
+  assert.equal(await page.locator("html").getAttribute("data-hud-theme"),"light");
+  assert.equal(await page.locator("#hud-theme-status").textContent(),"Manual · light");
+  await hud.selectOption("dark");
+  await page.emulateMedia({colorScheme:"light"});
+  assert.equal(await page.locator("html").getAttribute("data-hud-theme"),"dark",
+    "Manual override must ignore subsequent system changes");
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>document.querySelector("#grid-status")?.textContent?.startsWith("Showing "));
+  assert.equal(await page.locator("#hud-theme").inputValue(),"dark",
+    "Manual mode survives a browser reload");
+  await page.locator("#hud-theme").selectOption("system");
+  assert.equal(await page.locator("html").getAttribute("data-hud-theme"),"light");
+  await page.reload({waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>document.querySelector("#grid-status")?.textContent?.startsWith("Showing "));
+  assert.equal(await page.locator("#hud-theme").inputValue(),"system",
+    "System setting survives a browser reload");
+  assert.equal(await page.locator("main").evaluate(el=>getComputedStyle(el).backgroundColor),
+    mapSurface,"Theme changes must not recolor the map stage");
+  const currentGridPaint=await page.locator("#grid-canvas").evaluate(el=>{
+    const a=el.getContext("2d").getImageData(0,0,el.width,el.height).data;
+    let sum=0;for(let i=3;i<a.length;i+=4)sum+=a[i];return sum;
+  });
+  assert.ok(currentGridPaint>0 && gridPaint>0,"Grid overlay remains painted in both themes");
   // At the initial broad zoom there are no GIS requests; toggling still
   // needs to expose a complete, truthful categorical legend.
   assert.equal(await page.locator("#zoning-legend").isVisible(),false);
