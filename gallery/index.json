@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "description": "Public map demonstrations; this index is separate from specimen intake and downstream task queues.",
+  "entries": [
+    {
+      "id": "los-angeles-map-pilot",
+      "title": "Los Angeles metropolitan mapping pilot",
+      "specimen_id": "metro:us:ca:los-angeles",
+      "status": "existing_partial_pilot",
+      "gallery_page": "web/index.html",
+      "website_url": "https://sguzman.github.io/stratlas/",
+      "specimen_record": "docs/metropolises/los-angeles.json",
+      "source_catalog": "docs/sources/catalog.json",
+      "summary": "Existing interactive regional map with source-scoped geographic overlays. The metropolitan boundary, coverage, and some provider verification remain incomplete; this is not a processed or completed specimen."
+    }
+  ]
+}
