@@ -17,9 +17,13 @@ function make(){
     stroke(){actions.push("stroke")}
   };
   const canvas={width:0,height:0,hidden:true,getContext:()=>ctx};
+  const container={
+    clientWidth:600,clientHeight:400,
+    appendChild(element){element.parentElement=this;return element}
+  };
   const map={
     on:(name,cb)=>events.set(name,cb),
-    getContainer:()=>({clientWidth:600,clientHeight:400}),
+    getContainer:()=>container,
     getBounds:()=>({getWest:()=>-118.6,getSouth:()=>33.7,
       getEast:()=>-118.0,getNorth:()=>34.3}),
     getZoom:()=>13,
@@ -31,11 +35,13 @@ function make(){
     onStatus:x=>statuses.push(x)};
   return {map,canvas,actions,events,statuses,opts};
 }
-test("the grid is drawn to an independent, topmost canvas",()=>{
+test("the grid is kept above the map but below control layers",()=>{
   const {map,canvas,actions,statuses,opts}=make();
   const g=createGridOverlay(map,opts);
   g.setEnabled(true);
   assert.equal(canvas.hidden,false);
+  assert.equal(canvas.parentElement,map.getContainer(),
+    "Grid is moved into the map stacking context below control overlays");
   assert.ok(actions.filter(x=>x==="stroke").length>=2);
   assert.ok(actions.includes("line"));
   assert.match(statuses.at(-1),/Showing 1 tile cells/);
