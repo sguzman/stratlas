@@ -59,7 +59,15 @@ jobs:
           node tests/browser-smoke.mjs
       - name: Live LA zoning browser API integration
         timeout-minutes: 3
-        run: node tests/zoning-live.mjs
+        run: |
+          python3 -m http.server 8765 --directory web >/tmp/stratlas-zoning-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for attempt in $(seq 1 25); do
+            if curl --silent --fail http://127.0.0.1:8765/ >/dev/null; then break; fi
+            sleep 0.2
+          done
+          node tests/zoning-live.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site
