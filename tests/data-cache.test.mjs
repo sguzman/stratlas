@@ -89,11 +89,16 @@ test("pre-aborted request does not make a network call",async()=>{
   await assert.rejects(cache.fetchJson(url,{...options,signal:abort.signal}),{name:"AbortError"});
   assert.equal(calls,0);
 });
-test("cache rejects responses larger than four mebibytes",async()=>{
+test("cache accepts medium responses but rejects bodies above eight mebibytes",async()=>{
   const store=storeFactory();
-  const cache=createDataCache({store,transport:async()=>response({huge:"a".repeat(4*1024*1024)})});
+  let size=4*1024*1024;
+  const cache=createDataCache({store,transport:async()=>response({huge:"a".repeat(size)})});
   await cache.fetchJson(url,options);
-  assert.equal(store.data.size,0);
+  assert.equal(store.data.size,1,"A four-MiB source response should be retained");
+  await cache.clear();
+  size=8*1024*1024;
+  await cache.fetchJson(url,options);
+  assert.equal(store.data.size,0,"Responses larger than eight MiB must be excluded");
 });
 test("geographic API URLs must use HTTPS",async()=>{
   let calls=0;
