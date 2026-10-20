@@ -122,6 +122,11 @@ async function start() {
     let url=base.url.replace("{z}",String(z)).replace("{x}",String(x)).replace("{y}",String(y));
     if (base.needsKey) url+="?key="+encodeURIComponent(state.cartoKey);
     const response=await fetch(url,{cache:"default",signal:controller.signal,mode:"cors"});
+    // Public USGS raster caches can legitimately omit tiles with no source
+    // coverage (especially shaded relief over water). A 404 is an empty tile,
+    // not a fatal map error. Other HTTP errors still surface normally.
+    if(response.status===404 && state.baseId.startsWith("usgs-"))
+      return {data:EMPTY_TILE};
     if (!response.ok) throw Error(base.name+" tile HTTP "+response.status);
     const bytes=await response.arrayBuffer();
     state.count++;

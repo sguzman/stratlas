@@ -28,4 +28,5 @@ test("native USGS raster requests still run through the study-region tile restri
   assert.match(js,/if \(!tile_in_region/);
   assert.match(js,/maxZoom:16/);
   assert.match(js,/USGS tile coverage is primarily U.S./);
+  assert.match(js,/response.status===404 && state.baseId.startsWith\("usgs-"\)/);
 });

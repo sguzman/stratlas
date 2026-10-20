@@ -7,22 +7,33 @@ const browser=await chromium.launch({executablePath:exe,headless:true,args:["--n
 try{
   const page=await browser.newPage();
   await page.goto("http://127.0.0.1:8765/",{waitUntil:"domcontentloaded"});
+  // USGS shaded relief is intentionally sparse over water and outside native
+  // coverage. Verify one actual on-land tile for EACH source.
+  const sampleTiles=["9/204/87","9/203/88","9/194/105","10/389/210"];
   for(const [name,service] of [
     ["Topography","USGSTopo"],
     ["Shaded relief","USGSShadedReliefOnly"],
     ["Orthoimagery","USGSImageryOnly"]
   ]){
-    const url="https://basemap.nationalmap.gov/arcgis/rest/services/"+
-      service+"/MapServer/tile/9/204/87";
-    const response=await page.evaluate(async url=>{
-      const signal=AbortSignal.timeout(18000);
-      const result=await fetch(url,{mode:"cors",cache:"default",signal});
-      const bytes=await result.arrayBuffer();
-      return {ok:result.ok,status:result.status,type:result.headers.get("content-type"),length:bytes.byteLength};
-    },url);
-    assert.ok(response.ok,name+" returned HTTP "+response.status);
-    assert.match(response.type||"",/^image\//i,name+" is not an image: "+response.type);
-    assert.ok(response.length>900,name+" returned suspiciously few bytes");
-    console.log(name+": HTTP "+response.status+" · "+response.length+" bytes");
+    const observed=[];
+    let good=false;
+    for(const tile of sampleTiles){
+      const url="https://basemap.nationalmap.gov/arcgis/rest/services/"+
+        service+"/MapServer/tile/"+tile;
+      const result=await page.evaluate(async url=>{
+        const response=await fetch(url,{mode:"cors",cache:"default",
+          signal:AbortSignal.timeout(18000)});
+        const bytes=await response.arrayBuffer();
+        return {ok:response.ok,status:response.status,
+          type:response.headers.get("content-type"),length:bytes.byteLength};
+      },url);
+      observed.push({tile,status:result.status,bytes:result.length});
+      if(result.ok && /^image\//i.test(result.type||"") && result.length>900){
+        good=true;break;
+      }
+      if(result.status!==404)break; // don't mask auth, policy, or server errors
+    }
+    assert.ok(good,name+" had no valid on-land tile: "+JSON.stringify(observed));
+    console.log(name+": "+JSON.stringify(observed));
   }
 }finally{await browser.close()}

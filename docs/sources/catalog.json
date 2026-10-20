@@ -58,7 +58,7 @@
       "policy": "https://apps.nationalmap.gov/services/",
       "credentials": "none",
       "cache": "Normal browser HTTP tile caching; no bulk prefetch",
-      "limits": "Shaded relief, not numeric elevation; detail through z16."
+      "limits": "Shaded relief is not numeric elevation; native detail to z16. Some ocean/unsupported tiles return 404 and are displayed as empty coverage."
     },
     {
       "id": "usgs-imagery",
