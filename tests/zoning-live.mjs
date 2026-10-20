@@ -25,10 +25,17 @@ try{
     route=>route.fulfill({body:tile,contentType:"image/png"}));
   await page.goto("http://127.0.0.1:8765/",{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>document.querySelector("#zoom-level")?.textContent?.startsWith("Zoom "));
-  // Zoom into central LA before enabling the overlay. Never query whole LA.
-  for(let i=0;i<6;i++)await page.locator(".maplibregl-ctrl-zoom-in").click();
-  await page.waitForFunction(()=>Number(document.querySelector("#zoom-level")?.textContent?.split(" ")[1])>=14,
-    {timeout:16000});
+  // Wait for each zoom animation; rapid clicks can cancel/override each other.
+  // The zoning source deliberately does not fetch geography below zoom 13.
+  for(let i=0;i<8;i++){
+    const value=Number((await page.locator("#zoom-level").textContent()).split(" ")[1]);
+    if(value>=14)break;
+    await page.locator(".maplibregl-ctrl-zoom-in").click();
+    await page.waitForTimeout(450);
+  }
+  const actualZoom=await page.locator("#zoom-level").textContent();
+  console.log("Zoning live test zoom:",actualZoom);
+  assert.ok(Number(actualZoom.split(" ")[1])>=14,"Did not reach a detailed map zoom");
   await page.evaluate(()=>{
     const el=document.querySelector("#overlay-status");
     window.__zoningLoaded=false;
@@ -39,7 +46,13 @@ try{
     }).observe(el,{childList:true,characterData:true,subtree:true});
   });
   await page.locator("#zoning").check();
-  await page.waitForFunction(()=>window.__zoningLoaded,{timeout:90000});
+  try{
+    await page.waitForFunction(()=>window.__zoningLoaded,null,{timeout:90000});
+  }catch(error){
+    console.error("Last zoning status:",await page.locator("#overlay-status").textContent());
+    console.error("GIS responses:",JSON.stringify(gis.slice(0,12)));
+    throw error;
+  }
   assert.ok(gis.some(x=>x.url.includes("returnIdsOnly=true")),"No ArcGIS ID lookup");
   assert.ok(gis.some(x=>x.url.includes("objectIds=")),"No ArcGIS polygon query");
   assert.ok(!errors.length,"Browser exceptions: "+errors.join("; "));
