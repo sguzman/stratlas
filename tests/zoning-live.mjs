@@ -15,7 +15,7 @@ try{
   page.on("pageerror",error=>errors.push(error.message));
   page.on("response",response=>{
     if(response.url().includes("/Zoning/FeatureServer/15/query"))
-      gis.push({status:response.status(),url:response.url().slice(0,180)});
+      gis.push({status:response.status(),url:response.url()});
   });
   await page.route("https://cdn.jsdelivr.net/npm/maplibre-gl@5.5.0/dist/maplibre-gl.js",
     route=>route.fulfill({path:"node_modules/maplibre-gl/dist/maplibre-gl.js",contentType:"text/javascript"}));
@@ -41,8 +41,9 @@ try{
     window.__zoningLoaded=false;
     new MutationObserver(()=>{
       const s=el.textContent||"";
-      if(/^Zoning: loaded \d+\//.test(s)||/^Zoning: \d+ retained · \d+\/\d+ in current view/.test(s))
-        window.__zoningLoaded=true;
+      const partial=/^Zoning: loaded (\d+)\//.exec(s);
+      const finished=/^Zoning: \d+ retained · (\d+)\/(\d+) in current view/.exec(s);
+      if(Number(partial?.[1]||finished?.[1]||0)>0)window.__zoningLoaded=true;
     }).observe(el,{childList:true,characterData:true,subtree:true});
   });
   await page.locator("#zoning").check();
@@ -53,10 +54,11 @@ try{
     console.error("GIS responses:",JSON.stringify(gis.slice(0,12)));
     throw error;
   }
-  assert.ok(gis.some(x=>x.url.includes("returnIdsOnly=true")),"No ArcGIS ID lookup");
-  assert.ok(gis.some(x=>x.url.includes("objectIds=")),"No ArcGIS polygon query");
+  assert.ok(gis.some(x=>new URL(x.url).searchParams.get("returnIdsOnly")==="true"),"No ArcGIS ID lookup");
+  assert.ok(gis.some(x=>new URL(x.url).searchParams.has("objectIds")),"No ArcGIS polygon query");
   assert.ok(!errors.length,"Browser exceptions: "+errors.join("; "));
   console.log("Live zoning API succeeded; provider queries:",gis.length);
+  console.log("GIS response summary:",gis.map(x=>({status:x.status,idQuery:new URL(x.url).searchParams.has("returnIdsOnly"),geometryQuery:new URL(x.url).searchParams.has("objectIds")})));
   console.log("Overlay status:",await page.locator("#overlay-status").textContent());
 }catch(error){
   console.error("Live zoning provider test failed:",String(error));
