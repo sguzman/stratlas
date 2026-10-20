@@ -60,75 +60,99 @@ function activeFilter(category){
     : ["==",["get","CATEGORY"],category];
 }
 export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache,legendContainer}){
-  let active=false,opacity=0.42,hover=null,generation=0,abort=null,debounce=null;
-  let completeKey="",loadingKey="";
+  let active=false,opacity=0.42,hover=null;
+  let pointerCategory=null,focusedCategory=null,highlightFrame=null;
+  let latestKey="",latestIds=null,fetchingIndex=null;
+  let session=0,sessionController=new AbortController(),idController=null;
   const polygons=new Map(),knownWindows=new Map();
+  const queued=[],queuedIds=new Set(),inFlightIds=new Set();
   const MAX_POLYGONS=12000,MAX_WINDOWS=32;
+  let running=0,debounce=null,drawTimer=null,lastDraw=0;
   const status=message=>onStatus(message);
-  function cancel(){
-    generation++;
-    abort?.abort();abort=null;loadingKey="";
-    if(debounce!==null){clearTimeout(debounce);debounce=null}
-  }
+
   function source(){return map.getSource(SOURCE)}
   function publish(){
+    if(drawTimer!==null){clearTimeout(drawTimer);drawTimer=null}
     if(!source())return;
-    const clipped=JSON.parse(filterFeatures(JSON.stringify({
+    // Only send geometry currently in view to MapLibre; preserve all visited
+    // polygons in memory so panning/zoom-out restores them without refetches.
+    const scope=intersect(viewport(map),getRegion());
+    const clipped=scope?JSON.parse(filterFeatures(JSON.stringify({
       type:"FeatureCollection",features:[...polygons.values()]
-    }),...getRegion()));
+    }),...scope)):empty();
     source().setData(clipped);
+    lastDraw=Date.now();
+  }
+  function scheduleDraw(){
+    const wait=Math.max(0,130-(Date.now()-lastDraw));
+    if(wait===0){publish();return}
+    if(drawTimer===null)drawTimer=setTimeout(()=>publish(),wait);
   }
   function merge(features){
-    let updated=0;
+    let count=0;
     for(const feature of features){
       const id=feature.properties?.OBJECTID??feature.id;
       if(!validId(id))continue;
       const key=Number(id);
-      polygons.delete(key);
-      polygons.set(key,feature);
-      updated++;
-      while(polygons.size>MAX_POLYGONS){
+      polygons.delete(key);polygons.set(key,feature);count++;
+      while(polygons.size>MAX_POLYGONS)
         polygons.delete(polygons.keys().next().value);
-        // Eviction means a viewport may need missing IDs fetched again.
-        completeKey="";
-      }
     }
-    if(updated)publish();
-    return updated;
+    if(count)scheduleDraw();
+    return count;
   }
   function rememberWindow(key,ids){
-    knownWindows.delete(key);
-    knownWindows.set(key,ids);
-    while(knownWindows.size>MAX_WINDOWS)knownWindows.delete(knownWindows.keys().next().value);
+    knownWindows.delete(key);knownWindows.set(key,ids);
+    while(knownWindows.size>MAX_WINDOWS)
+      knownWindows.delete(knownWindows.keys().next().value);
   }
-  function applyPaint(){
-    if(map.getLayer(FILL)){
-      const dim=Math.max(0.025,opacity*0.14);
-      map.setPaintProperty(FILL,"fill-opacity",
-        hover===null?opacity:["case",activeFilter(hover),opacity,dim]);
-    }
-    if(map.getLayer(HIGHLIGHT)){
+  function progress(){
+    if(!active||!latestIds)return;
+    const complete=latestIds.reduce((n,id)=>n+(polygons.has(id)?1:0),0);
+    const waiting=latestIds.length-complete;
+    status("Zoning: "+complete+"/"+latestIds.length+
+      " polygons in current view · "+polygons.size+" retained"+
+      (waiting?" · "+waiting+" remaining":" · loaded"));
+  }
+  function paintOpacity(){
+    if(map.getLayer(FILL))map.setPaintProperty(FILL,"fill-opacity",opacity);
+  }
+  function renderHighlight(){
+    highlightFrame=null;
+    const desired=active?(pointerCategory??focusedCategory):null;
+    if(desired===hover)return;
+    hover=desired;
+    if(map.getLayer(HIGHLIGHT))
       map.setFilter(HIGHLIGHT,hover===null?noHighlight:activeFilter(hover));
-    }
+  }
+  function scheduleHighlight(){
+    if(typeof globalThis.requestAnimationFrame==="function"){
+      if(highlightFrame!==null)return;
+      highlightFrame=globalThis.requestAnimationFrame(renderHighlight);
+    }else renderHighlight();
   }
   function visibility(){
-    for(const id of [FILL,LINE,HIGHLIGHT]){
-      if(map.getLayer(id))map.setLayoutProperty(id,"visibility",active?"visible":"none");
-    }
+    for(const id of [FILL,LINE,HIGHLIGHT])
+      if(map.getLayer(id))
+        map.setLayoutProperty(id,"visibility",active?"visible":"none");
   }
   function ensureLayers(){
+    // Applying paint/filter properties on every pan forces costly full-layer
+    // repaints. Only initialize after a genuine MapLibre style replacement.
+    if(source()&&map.getLayer(FILL)&&map.getLayer(LINE)&&map.getLayer(HIGHLIGHT))return;
     if(!source())map.addSource(SOURCE,{type:"geojson",data:empty()});
     if(!map.getLayer(FILL))map.addLayer({id:FILL,type:"fill",source:SOURCE,
       paint:{"fill-color":categoricalPaint,"fill-opacity":opacity}});
     if(!map.getLayer(LINE))map.addLayer({id:LINE,type:"line",source:SOURCE,
       paint:{"line-color":"#233645","line-opacity":0.53,"line-width":0.5}});
     if(!map.getLayer(HIGHLIGHT))map.addLayer({id:HIGHLIGHT,type:"line",source:SOURCE,
-      filter:noHighlight,paint:{"line-color":"#ffdf63","line-width":2.6,"line-opacity":1}});
-    visibility();applyPaint();
-  }
-  function highlight(category){
-    hover=active?category:null;
-    applyPaint();
+      filter:noHighlight,paint:{"line-color":"#ffdf63","line-width":3.2,"line-opacity":1}});
+    visibility();
+    paintOpacity();
+    // On a style reset, the map's filter must be reattached even if the
+    // selected legend category has not changed.
+    if(map.getLayer(HIGHLIGHT))
+      map.setFilter(HIGHLIGHT,hover===null?noHighlight:activeFilter(hover));
   }
   function buildLegend(){
     if(!legendContainer)return;
@@ -146,16 +170,16 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       entry.setAttribute("aria-label","Highlight "+name+" zoning on map");
       const swatch=document.createElement("span");
       swatch.className="zoning-legend-swatch";swatch.style.backgroundColor=color;
-      const text=document.createElement("span");text.textContent=name;
-      entry.append(swatch,text);
-      entry.addEventListener("mouseenter",()=>highlight(name));
-      entry.addEventListener("mouseleave",()=>highlight(null));
-      entry.addEventListener("focus",()=>highlight(name));
-      entry.addEventListener("blur",()=>highlight(null));
+      const label=document.createElement("span");label.textContent=name;
+      entry.append(swatch,label);
+      entry.addEventListener("mouseenter",()=>{pointerCategory=name;scheduleHighlight()});
+      entry.addEventListener("mouseleave",()=>{if(pointerCategory===name)pointerCategory=null;scheduleHighlight()});
+      entry.addEventListener("focus",()=>{focusedCategory=name;scheduleHighlight()});
+      entry.addEventListener("blur",()=>{if(focusedCategory===name)focusedCategory=null;scheduleHighlight()});
       grid.append(entry);
     }
     const note=document.createElement("p");note.className="meta";
-    note.textContent="Hover or focus a category to highlight all loaded matching polygons.";
+    note.textContent="Hover or focus a category to outline matching loaded polygons.";
     legendContainer.replaceChildren(heading,grid,note);
   }
   async function json(url,controller,namespace){
@@ -172,111 +196,137 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       throw Error("City Planning returned an invalid GeoJSON feature collection");
     return body.features;
   }
+  function stopRequests(){
+    session++;
+    sessionController.abort();sessionController=new AbortController();
+    idController?.abort();idController=null;fetchingIndex=null;
+    queued.length=0;queuedIds.clear();inFlightIds.clear();running=0;
+    if(debounce!==null){clearTimeout(debounce);debounce=null}
+    latestKey="";latestIds=null;
+  }
+  function pump(){
+    if(!active)return;
+    const currentSession=session,controller=sessionController;
+    while(running<CONCURRENT_BATCHES&&queued.length){
+      const group=queued.shift();
+      for(const id of group){queuedIds.delete(id);inFlightIds.add(id)}
+      running++;
+      (async()=>{
+        try{
+          const body=await json(featuresUrl(group),controller,"la-zoning-features-v1");
+          if(currentSession!==session||controller.signal.aborted)return;
+          const features=validFeatures(body);
+          // Store full returned geometry, rather than clipping to the
+          // viewport that initiated the request. A subsequent pan may need it.
+          merge(features);
+        }catch(error){
+          if(currentSession!==session||controller.signal.aborted)return;
+          status("Zoning: "+polygons.size+" retained · geometry request failed: "+error.message);
+        }finally{
+          if(currentSession!==session)return;
+          for(const id of group)inFlightIds.delete(id);
+          running--;
+          pump();
+          progress();
+        }
+      })();
+    }
+  }
+  function prioritize(ids){
+    // Never let thousands of old queued polygons block the newest viewport.
+    // Completed and in-flight requests are preserved. Old queued work can be
+    // recovered from the cached ID index when that area becomes visible again.
+    queued.length=0;queuedIds.clear();
+    const missing=ids.filter(id=>!polygons.has(id)&&!inFlightIds.has(id));
+    for(let i=0;i<missing.length;i+=IDS_PER_BATCH){
+      const group=missing.slice(i,i+IDS_PER_BATCH);
+      queued.push(group);
+      for(const id of group)queuedIds.add(id);
+    }
+    pump();
+    progress();
+  }
   async function load(){
     if(!active)return;
     ensureLayers();
+    publish();
     if(map.getZoom()<MIN_ZOOM){
-      cancel();status("Zoning: "+polygons.size+" polygons retained · zoom to "+
-        MIN_ZOOM+"+ to load new areas.");return;
+      status("Zoning: "+polygons.size+" retained · zoom to "+MIN_ZOOM+
+        "+ to load new polygons.");return;
     }
     const region=getRegion();
     const scope=intersect(intersect(viewport(map),region),COVERAGE);
     if(!scope){
-      cancel();status("Zoning: "+polygons.size+" retained · outside Los Angeles City coverage.");return;
+      status("Zoning: "+polygons.size+" retained · outside LA City coverage.");return;
     }
     const box=intersect(intersect(snapped(scope),region),COVERAGE);
     if(!box)return;
     const key=box.map(v=>v.toFixed(5)).join(",");
-    if(key===loadingKey)return;
-    if(key===completeKey && knownWindows.get(key)?.every(id=>polygons.has(id))){
-      status("Zoning: "+polygons.size+" polygons · current view already cached.");
-      return;
+    if(key===latestKey){
+      if(latestIds){
+        // A failed group is retryable on the next navigation. Don't restart
+        // already queued or currently running groups on repeated moveend.
+        if(!queued.length&&!running&&latestIds.some(id=>!polygons.has(id)))
+          prioritize(latestIds);
+        else progress();
+        return;
+      }
+      if(fetchingIndex===key)return;
+      // A failed ID lookup must not permanently poison this viewport key.
     }
-    cancel();
-    const current=generation,controller=new AbortController();
-    abort=controller;loadingKey=key;
+    latestKey=key;latestIds=null;
+    // New viewport cancels ONLY the previous ID lookup, not geometry batches
+    // already in flight. A completed batch always enters the retained cache.
+    idController?.abort();
+    const indexController=new AbortController();
+    idController=indexController;fetchingIndex=key;
+    queued.length=0;queuedIds.clear();
+    status("Zoning: discovering new view · "+polygons.size+" polygons retained…");
     try{
-      status("Zoning: identifying visible polygons · "+polygons.size+" retained…");
       let ids=knownWindows.get(key);
       if(!ids){
-        const body=await json(idsUrl(box),controller,"la-zoning-ids-v1");
+        const body=await json(idsUrl(box),indexController,"la-zoning-ids-v1");
         if(body?.error)throw Error(body.error.message||"City Planning ID query error");
         if(!Array.isArray(body?.objectIds))throw Error("City Planning returned no object ID list");
         ids=[...new Set(body.objectIds.map(Number).filter(validId))];
         rememberWindow(key,ids);
       }
-      if(controller.signal.aborted||current!==generation)return;
-      const missing=ids.filter(id=>!polygons.has(id));
-      if(!missing.length){
-        completeKey=key;abort=null;loadingKey="";
-        status("Zoning: "+polygons.size+" polygons · all "+ids.length+
-          " visible polygons already cached.");return;
-      }
-      const batches=[];
-      for(let i=0;i<missing.length;i+=IDS_PER_BATCH)
-        batches.push(missing.slice(i,i+IDS_PER_BATCH));
-      let next=0,loaded=0,failures=0;
-      status("Zoning: "+ids.length+" visible polygons · loading "+
-        missing.length+" missing · "+polygons.size+" retained…");
-      async function worker(){
-        while(next<batches.length){
-          if(controller.signal.aborted||current!==generation)return;
-          const group=batches[next++];
-          try{
-            const body=await json(featuresUrl(group),controller,"la-zoning-features-v1");
-            if(controller.signal.aborted||current!==generation)return;
-            const features=validFeatures(body);
-            const clipped=JSON.parse(filterFeatures(JSON.stringify({
-              type:"FeatureCollection",features
-            }),...region));
-            merge(clipped.features);
-            loaded+=group.length;
-            status("Zoning: loaded "+Math.min(loaded,missing.length)+"/"+missing.length+
-              " missing polygons · "+polygons.size+" retained.");
-          }catch(error){
-            if(controller.signal.aborted||current!==generation)return;
-            failures++;
-            status("Zoning: "+polygons.size+" retained · batch failed: "+error.message);
-          }
-        }
-      }
-      await Promise.all(Array.from({length:Math.min(CONCURRENT_BATCHES,batches.length)},()=>worker()));
-      if(controller.signal.aborted||current!==generation)return;
-      abort=null;loadingKey="";
-      const stillMissing=ids.filter(id=>!polygons.has(id)).length;
-      if(!stillMissing)completeKey=key;
-      status("Zoning: "+polygons.size+" retained · "+(ids.length-stillMissing)+
-        "/"+ids.length+" in current view"+
-        (stillMissing?" · "+stillMissing+" unavailable; revisit to retry":"")+
-        (failures?" · "+failures+" failed batches":""));
+      if(!active||indexController.signal.aborted||key!==latestKey)return;
+      idController=null;fetchingIndex=null;
+      latestIds=ids;
+      prioritize(ids);
     }catch(error){
-      if(controller.signal.aborted||current!==generation)return;
-      abort=null;loadingKey="";
-      status("Zoning: "+polygons.size+" retained · GIS request failed: "+error.message);
+      if(!active||indexController.signal.aborted||key!==latestKey)return;
+      idController=null;fetchingIndex=null;
+      status("Zoning: "+polygons.size+" retained · GIS ID lookup failed: "+error.message);
     }
   }
   function setEnabled(enabled){
     active=Boolean(enabled);
     buildLegend();
     if(!active){
-      cancel();highlight(null);visibility();
-      status("Zoning hidden · "+polygons.size+" polygons retained.");return;
+      stopRequests();
+      pointerCategory=null;focusedCategory=null;scheduleHighlight();
+      visibility();
+      status("Zoning hidden · "+polygons.size+" polygons retained.");
+      return;
     }
-    ensureLayers();publish();load();
+    ensureLayers();publish();void load();
   }
   function setOpacity(value){
     if(!Number.isFinite(value))return;
     opacity=Math.max(0,Math.min(1,value));
-    applyPaint();
+    paintOpacity();
   }
   map.on("style.load",()=>{
-    cancel();ensureLayers();publish();
-    if(active)load();
+    ensureLayers();publish();
+    if(active)void load();
   });
   map.on("moveend",()=>{
     if(!active)return;
+    // A new viewport doesn't abort in-flight polygons from the old view.
     if(debounce!==null)clearTimeout(debounce);
-    debounce=setTimeout(()=>{debounce=null;load()},160);
+    debounce=setTimeout(()=>{debounce=null;void load()},140);
   });
   map.on("click",event=>{
     if(!active||!map.getLayer(FILL))return;
@@ -293,7 +343,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
   });
   return {
     setEnabled,setOpacity,
-    onRegionChange:()=>{cancel();completeKey="";publish();if(active)load()},
-    clearMemory:()=>{knownWindows.clear();completeKey=""}
+    onRegionChange:()=>{stopRequests();publish();if(active)void load()},
+    clearMemory:()=>{knownWindows.clear();latestKey="";latestIds=null}
   };
 }

@@ -41,9 +41,8 @@ try{
     window.__zoningLoaded=false;
     new MutationObserver(()=>{
       const s=el.textContent||"";
-      const partial=/^Zoning: loaded (\d+)\//.exec(s);
-      const finished=/^Zoning: \d+ retained · (\d+)\/(\d+) in current view/.exec(s);
-      if(Number(partial?.[1]||finished?.[1]||0)>0)window.__zoningLoaded=true;
+      const visible=/^Zoning: (\d+)\/(\d+) polygons in current view/.exec(s);
+      if(Number(visible?.[1]||0)>0)window.__zoningLoaded=true;
     }).observe(el,{childList:true,characterData:true,subtree:true});
   });
   await page.locator("#zoning").check();
@@ -56,6 +55,22 @@ try{
   }
   assert.ok(gis.some(x=>new URL(x.url).searchParams.get("returnIdsOnly")==="true"),"No ArcGIS ID lookup");
   assert.ok(gis.some(x=>new URL(x.url).searchParams.has("objectIds")),"No ArcGIS polygon query");
+  // Reproduce the user's failure: pan while the first area's thousands of
+  // features may still be in flight. A different viewport must request
+  // a distinct ID envelope without needing to toggle the overlay.
+  const idsBefore=new Set(gis.filter(x=>new URL(x.url).searchParams.get("returnIdsOnly")==="true").map(x=>x.url));
+  await page.mouse.move(610,375);
+  await page.mouse.down();
+  await page.mouse.move(965,390,{steps:15});
+  await page.mouse.up();
+  let sawDifferentIdQuery=false;
+  for(let attempt=0;attempt<90;attempt++){
+    await page.waitForTimeout(350);
+    sawDifferentIdQuery=gis.some(x=>
+      new URL(x.url).searchParams.get("returnIdsOnly")==="true"&&!idsBefore.has(x.url));
+    if(sawDifferentIdQuery)break;
+  }
+  assert.ok(sawDifferentIdQuery,"Panning didn't query IDs for the second viewport");
   assert.ok(!errors.length,"Browser exceptions: "+errors.join("; "));
   console.log("Live zoning API succeeded; provider queries:",gis.length);
   console.log("GIS response summary:",gis.map(x=>({status:x.status,idQuery:new URL(x.url).searchParams.has("returnIdsOnly"),geometryQuery:new URL(x.url).searchParams.has("objectIds")})));

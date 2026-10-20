@@ -40,6 +40,7 @@ function make(map,statuses=[],options={}){
   });
 }
 async function settle(){for(let i=0;i<12;i++)await new Promise(resolve=>setImmediate(resolve))}
+async function painted(){await settle();await new Promise(r=>setTimeout(r,155));await settle()}
 function mockApi(ids=[1,2],capture=[]){
   globalThis.fetch=async url=>{
     const u=new URL(url);capture.push(u);
@@ -67,7 +68,7 @@ test("viewport-bounded ID query then 40-ID geometry chunks, no recursive subdivi
   const calls=[],map=new FakeMap(),statuses=[];
   mockApi(Array.from({length:93},(_,i)=>i+1),calls);
   const z=make(map,statuses);
-  z.setEnabled(true);await settle();
+  z.setEnabled(true);await painted();
   const ids=calls.filter(x=>x.searchParams.get("returnIdsOnly")==="true");
   const shapes=calls.filter(x=>x.searchParams.has("objectIds"));
   assert.equal(ids.length,1);
@@ -97,12 +98,12 @@ test("completed geometry batches render progressively without waiting for others
     return response(features(ids));
   };
   const z=make(map,statuses);
-  z.setEnabled(true);await settle();
+  z.setEnabled(true);await painted();
   assert.equal(typeof resolveSecond,"function");
   assert.equal(map.getSource("la-zoning-data").data.features.length,40,
     "First batch must be visible while another batch is pending");
   assert.match(statuses.at(-1),/loading|loaded/);
-  resolveSecond();await settle();
+  resolveSecond();await painted();
   assert.equal(map.getSource("la-zoning-data").data.features.length,60);
 });
 test("a failed batch preserves earlier polygons and can retry missing IDs later",async()=>{
@@ -116,14 +117,14 @@ test("a failed batch preserves earlier polygons and can retry missing IDs later"
   const z=make(map,statuses);
   z.setEnabled(true);await settle();
   assert.match(statuses.at(-1),/unavailable|failed/);
-  fail=false;z.setEnabled(false);z.setEnabled(true);await settle();
+  fail=false;z.setEnabled(false);z.setEnabled(true);await painted();
   assert.equal(map.getSource("la-zoning-data").data.features.length,3);
   assert.ok(count>=3);
 });
 test("opacity updates map fill without querying or deleting any polygons",async()=>{
   const map=new FakeMap(),requests=[];mockApi([1,2],requests);
   const z=make(map);
-  z.setEnabled(true);await settle();
+  z.setEnabled(true);await painted();
   const before=requests.length;
   z.setOpacity(0.75);
   assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.75);
@@ -154,7 +155,8 @@ test("legend category hover highlights matching map polygons; focus works too",(
     const chosen=entries[1];assert.equal(chosen.children[1].textContent,"Commercial");
     chosen.handlers.get("mouseenter")();
     assert.deepEqual(map.filters.get("la-zoning-highlight"),["==",["get","CATEGORY"],"Commercial"]);
-    assert.equal(map.paint.get("la-zoning-fill:fill-opacity")[0],"case");
+    assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.42,
+      "Hover must not repaint the entire fill layer");
     chosen.handlers.get("mouseleave")();
     assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.42);
     chosen.handlers.get("focus")();
@@ -162,4 +164,111 @@ test("legend category hover highlights matching map polygons; focus works too",(
     chosen.handlers.get("blur")();
     z.setEnabled(false);assert.equal(container.hidden,true);
   }finally{globalThis.document=saved}
+});
+
+test("panning while initial polygon downloads are pending starts new-area IDs and prioritizes new-area geometry",async()=>{
+  const map=new FakeMap({viewport:[-118.28,34.02,-118.21,34.08]}),calls=[],statuses=[];
+  let oldResolvers=[],newCalls=0;
+  globalThis.fetch=async url=>{
+    const u=new URL(url);calls.push(u);
+    if(u.searchParams.get("returnIdsOnly")==="true"){
+      const west=Number(u.searchParams.get("geometry").split(",")[0]);
+      return response({objectIds:west<-118.4
+        ? Array.from({length:40},(_,i)=>200+i)
+        : Array.from({length:120},(_,i)=>1+i)});
+    }
+    const ids=u.searchParams.get("objectIds").split(",").map(Number);
+    if(ids[0]<200)
+      return new Promise(resolve=>oldResolvers.push(()=>resolve(response(features(ids)))));
+    newCalls++;
+    return response(features(ids));
+  };
+  const zoning=make(map,statuses);
+  zoning.setEnabled(true);await settle();
+  assert.equal(oldResolvers.length,3,"old view has three outstanding requests");
+  map.viewport=[-118.49,34.02,-118.42,34.08];map.fire("moveend");
+  await new Promise(r=>setTimeout(r,180));await settle();
+  assert.equal(calls.filter(u=>u.searchParams.get("returnIdsOnly")==="true").length,2,
+    "Panning must query IDs for the new geographic area while old downloads run");
+  assert.equal(newCalls,0,"global three-request concurrency is respected");
+  oldResolvers.shift()();await painted();
+  assert.equal(newCalls,1,"new-area geometry runs as soon as one request slot frees");
+  assert.ok(map.getSource("la-zoning-data").data.features.some(f=>f.properties.OBJECTID>=200),
+    "New area is rendered without waiting for the first area to finish");
+  const others=oldResolvers.splice(0);
+  for(const complete of others)complete();
+  await painted();
+  assert.ok(statuses.some(x=>x.includes("in current view")));
+  assert.equal(calls.filter(u=>u.searchParams.get("returnIdsOnly")==="true").length,2);
+});
+test("a failed ID lookup can retry in the same viewport",async()=>{
+  const map=new FakeMap(),statuses=[];
+  let idQueries=0;
+  globalThis.fetch=async url=>{
+    const u=new URL(url);
+    if(u.searchParams.has("returnIdsOnly")){
+      idQueries++;
+      if(idQueries===1)throw Error("temporary ID failure");
+      return response({objectIds:[7]});
+    }
+    return response(features([7]));
+  };
+  const z=make(map,statuses);z.setEnabled(true);await settle();
+  assert.match(statuses.at(-1),/ID lookup failed/);
+  map.fire("moveend");await new Promise(r=>setTimeout(r,170));await painted();
+  assert.equal(idQueries,2);
+  assert.equal(map.getSource("la-zoning-data").data.features.length,1);
+});
+test("legend pointer transitions are coalesced; only highlight changes, not base fill",()=>{
+  const savedDocument=globalThis.document;
+  const savedRaf=globalThis.requestAnimationFrame;
+  const frames=[];
+  const element=tag=>({
+    tag,children:[],handlers:new Map(),attributes:{},style:{},hidden:false,
+    textContent:"",tabIndex:undefined,
+    append(...children){this.children.push(...children)},
+    replaceChildren(...children){this.children=children},
+    setAttribute(key,value){this.attributes[key]=value},
+    addEventListener(event,handler){this.handlers.set(event,handler)},
+    get childElementCount(){return this.children.length}
+  });
+  globalThis.document={createElement:element};
+  globalThis.requestAnimationFrame=fn=>{frames.push(fn);return frames.length};
+  try{
+    const map=new FakeMap({zoom:9}),legend=element("div");
+    let fillPaintCalls=0,highlightChanges=0;
+    const oldPaint=map.setPaintProperty.bind(map);
+    const oldFilter=map.setFilter.bind(map);
+    map.setPaintProperty=(layer,name,value)=>{
+      if(layer==="la-zoning-fill"&&name==="fill-opacity")fillPaintCalls++;
+      oldPaint(layer,name,value);
+    };
+    map.setFilter=(layer,value)=>{
+      if(layer==="la-zoning-highlight")highlightChanges++;
+      oldFilter(layer,value);
+    };
+    const z=make(map,[],{legendContainer:legend});z.setEnabled(true);
+    const initialPaint=fillPaintCalls;
+    const initialFilter=highlightChanges;
+    const entries=legend.children[1].children;
+    entries[0].handlers.get("mouseenter")();
+    entries[0].handlers.get("mouseleave")();
+    entries[1].handlers.get("mouseenter")();
+    assert.equal(highlightChanges,initialFilter,"No highlight repaint before animation frame");
+    assert.equal(frames.length,1,"Many pointer changes schedule one paint");
+    frames.shift()();
+    assert.equal(highlightChanges,initialFilter+1,"One final highlight filter");
+    assert.deepEqual(map.filters.get("la-zoning-highlight"),
+      ["==",["get","CATEGORY"],"Commercial"]);
+    assert.equal(fillPaintCalls,initialPaint,"Hover leaves base fill opacity untouched");
+    entries[1].handlers.get("mouseleave")();
+    frames.shift()();
+    assert.equal(map.paint.get("la-zoning-fill:fill-opacity"),0.42);
+    assert.equal(fillPaintCalls,initialPaint);
+    z.setEnabled(false);
+  }finally{
+    globalThis.document=savedDocument;
+    if(savedRaf===undefined)delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame=savedRaf;
+  }
 });
