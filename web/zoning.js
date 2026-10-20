@@ -62,7 +62,7 @@ function activeFilter(category){
 export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataCache,legendContainer}){
   let active=false,opacity=0.42,hover=null;
   let pointerCategory=null,focusedCategory=null,highlightFrame=null;
-  let latestKey="",latestIds=null,fetchingIndex=null;
+  let latestKey="",latestIds=null,fetchingIndex=null,lastError=null;
   let session=0,sessionController=new AbortController(),idController=null;
   const polygons=new Map(),knownWindows=new Map();
   const queued=[],queuedIds=new Set(),inFlightIds=new Set();
@@ -112,7 +112,8 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     const waiting=latestIds.length-complete;
     status("Zoning: "+complete+"/"+latestIds.length+
       " polygons in current view · "+polygons.size+" retained"+
-      (waiting?" · "+waiting+" remaining":" · loaded"));
+      (waiting?" · "+waiting+" remaining":" · loaded")+
+      (lastError?" · some requests failed: "+lastError:""));
   }
   function paintOpacity(){
     if(map.getLayer(FILL))map.setPaintProperty(FILL,"fill-opacity",opacity);
@@ -202,7 +203,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
     idController?.abort();idController=null;fetchingIndex=null;
     queued.length=0;queuedIds.clear();inFlightIds.clear();running=0;
     if(debounce!==null){clearTimeout(debounce);debounce=null}
-    latestKey="";latestIds=null;
+    latestKey="";latestIds=null;lastError=null;
   }
   function pump(){
     if(!active)return;
@@ -221,6 +222,7 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
           merge(features);
         }catch(error){
           if(currentSession!==session||controller.signal.aborted)return;
+          lastError=error.message;
           status("Zoning: "+polygons.size+" retained · geometry request failed: "+error.message);
         }finally{
           if(currentSession!==session)return;
@@ -266,15 +268,16 @@ export function createZoningOverlay(map,{getRegion,filterFeatures,onStatus,dataC
       if(latestIds){
         // A failed group is retryable on the next navigation. Don't restart
         // already queued or currently running groups on repeated moveend.
-        if(!queued.length&&!running&&latestIds.some(id=>!polygons.has(id)))
-          prioritize(latestIds);
+        if(!queued.length&&!running&&latestIds.some(id=>!polygons.has(id))){
+          lastError=null;prioritize(latestIds);
+        }
         else progress();
         return;
       }
       if(fetchingIndex===key)return;
       // A failed ID lookup must not permanently poison this viewport key.
     }
-    latestKey=key;latestIds=null;
+    latestKey=key;latestIds=null;lastError=null;
     // New viewport cancels ONLY the previous ID lookup, not geometry batches
     // already in flight. A completed batch always enters the retained cache.
     idController?.abort();

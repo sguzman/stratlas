@@ -78,7 +78,7 @@ test("viewport-bounded ID query then 40-ID geometry chunks, no recursive subdivi
   const [w,s,e,n]=ids[0].searchParams.get("geometry").split(",").map(Number);
   assert.ok(w>=-118.29&&s>=34.01&&e<=-118.20&&n<=34.09);
   assert.equal(map.getSource("la-zoning-data").data.features.length,93);
-  assert.ok(statuses.at(-1).includes("93/93 in current view"));
+  assert.ok(statuses.at(-1).includes("93/93 polygons in current view"));
   const count=calls.length;
   z.setEnabled(false);z.setEnabled(true);await settle();
   assert.equal(calls.length,count,"Toggle reuses in-memory polygons and ID index");
@@ -102,7 +102,7 @@ test("completed geometry batches render progressively without waiting for others
   assert.equal(typeof resolveSecond,"function");
   assert.equal(map.getSource("la-zoning-data").data.features.length,40,
     "First batch must be visible while another batch is pending");
-  assert.match(statuses.at(-1),/loading|loaded/);
+  assert.match(statuses.at(-1),/40\/60 polygons in current view/);
   resolveSecond();await painted();
   assert.equal(map.getSource("la-zoning-data").data.features.length,60);
 });
