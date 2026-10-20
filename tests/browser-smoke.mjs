@@ -61,6 +61,16 @@ try{
   assert.equal(await page.locator("#assessor-opacity-value").textContent(),"39%");
   await page.locator("#assessor").uncheck();
   assert.equal(await page.locator("#assessor-legend").isVisible(),false);
+  // Official USGS raster tile styles share the same region-bounded protocol.
+  await page.route("https://basemap.nationalmap.gov/**",
+    route=>route.fulfill({body:png,contentType:"image/png"}));
+  for(const selected of ["usgs-topo","usgs-relief","usgs-imagery"]){
+    await page.locator("#basemap").selectOption(selected);
+    assert.equal(await page.locator("#basemap").inputValue(),selected);
+    await page.waitForTimeout(120);
+    assert.doesNotMatch(await page.locator("#status").textContent(),/Initialization failed/);
+  }
+  await page.locator("#basemap").selectOption("osm");
   const initial=await page.locator("#zoom-level").textContent();
   await page.locator(".maplibregl-ctrl-zoom-in").click();
   await page.waitForFunction(old=>document.querySelector("#zoom-level")?.textContent!==old,initial,

@@ -31,6 +31,51 @@
       "cache": "normal HTTP cache; no prefetch"
     },
     {
+      "id": "usgs-topo",
+      "type": "basemap",
+      "name": "USGS The National Map Topographic",
+      "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+      "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Primarily U.S. with some global overview",
+      "date": "Service refreshed September 2026; source vintage varies",
+      "attribution": "USGS The National Map and component data providers",
+      "policy": "https://apps.nationalmap.gov/services/",
+      "credentials": "none",
+      "cache": "Normal browser HTTP tile caching; no bulk prefetch",
+      "limits": "Native raster detail to z16, browser overzoom beyond."
+    },
+    {
+      "id": "usgs-relief",
+      "type": "basemap",
+      "name": "USGS Shaded Relief",
+      "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
+      "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Primarily U.S. elevation, global context less detailed",
+      "date": "Service refreshed September 2025; 3DEP vintages vary",
+      "attribution": "USGS The National Map 3DEP and EROS GMTED2010",
+      "policy": "https://apps.nationalmap.gov/services/",
+      "credentials": "none",
+      "cache": "Normal browser HTTP tile caching; no bulk prefetch",
+      "limits": "Shaded relief, not numeric elevation; detail through z16."
+    },
+    {
+      "id": "usgs-imagery",
+      "type": "basemap",
+      "name": "USGS Orthoimagery",
+      "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+      "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Primarily U.S. NAIP aerial imagery",
+      "date": "Image acquisition dates vary; service refreshed June 2024",
+      "attribution": "USGS The National Map and USDA NAIP",
+      "policy": "https://apps.nationalmap.gov/services/",
+      "credentials": "none",
+      "cache": "Normal browser HTTP tile caching; no bulk prefetch",
+      "limits": "Not live satellite imagery; native detail to z16."
+    },
+    {
       "id": "carto-voyager",
       "type": "basemap",
       "name": "CARTO Voyager",
@@ -192,14 +237,6 @@
       "status": "research-only",
       "coverage": "Mexico",
       "date": "election-specific"
-    },
-    {
-      "id": "usgs-topo",
-      "type": "candidate",
-      "name": "USGS 3DEP",
-      "metadata": "https://www.usgs.gov/3d-elevation-program",
-      "status": "research-only",
-      "coverage": "United States"
     }
   ]
 }

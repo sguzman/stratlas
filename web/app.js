@@ -14,6 +14,7 @@ const REGIONS = {
   jalisco: {name:"Jalisco, Mexico",bbox:[-105.72,18.88,-101.50,22.76]}
 };
 const OSM_ATTR = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+const USGS_ATTR = '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a>';
 const BASES = {
   osm: {
     name:"OpenStreetMap",url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -23,6 +24,18 @@ const BASES = {
     name:"OpenTopoMap",url:"https://tile.opentopomap.org/{z}/{x}/{y}.png",
     attribution:OSM_ATTR+' · <a href="https://opentopomap.org/" target="_blank" rel="noopener">© OpenTopoMap (CC BY-SA)</a> · SRTM',
     maxZoom:17
+  },
+  "usgs-topo": {
+    name:"USGS Topographic",url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+    attribution:USGS_ATTR,maxZoom:16
+  },
+  "usgs-relief": {
+    name:"USGS Shaded Relief",url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
+    attribution:USGS_ATTR+" · 3DEP / GMTED2010",maxZoom:16
+  },
+  "usgs-imagery": {
+    name:"USGS Orthoimagery",url:"https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+    attribution:USGS_ATTR+" · USDA NAIP and USGS",maxZoom:16
   },
   "carto-voyager": {
     name:"CARTO Voyager",url:"https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
@@ -239,7 +252,8 @@ async function start() {
     if (selected.needsKey && !state.cartoKey) {
       setStatus(selected.name+" requires your CARTO basemap API key. Enter one in the sidebar.");
     } else {
-      setStatus("Rust/WASM ready · "+selected.name+" · requests restricted to study region.");
+      setStatus("Rust/WASM ready · "+selected.name+" · requests restricted to study region."+
+        (state.baseId.startsWith("usgs-")?" USGS tile coverage is primarily U.S.; above z16, cached tiles are enlarged.":""));
     }
     map.setStyle(styleForBase());
   }

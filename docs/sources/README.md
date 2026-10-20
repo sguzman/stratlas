@@ -11,7 +11,7 @@ This directory is Stratlas's source of truth for provider provenance. The [machi
 
 ## Interpretation safeguards
 
-Income is not wealth. County assessor tax-roll land values are not market sale prices. Census tracts are aggregate geographies, not personal records. Electoral results do not disclose individual voting preferences. Administrative presets are study rectangles, not precise municipal boundaries. OpenStreetMap community tiles may not be bulk-prefetched. Source-specific licensing and caching requirements always take precedence over Stratlas defaults.
+Income is not wealth. County assessor tax-roll land values are not market sale prices. Census tracts are aggregate geographies, not personal records. Electoral results do not disclose individual voting preferences. Administrative presets are study rectangles, not precise municipal boundaries. OpenStreetMap community tiles may not be bulk-prefetched. USGS topographic, shaded relief, and aerial imagery basemaps primarily cover the United States. They overzoom their detailed native tile cache beyond level 16. Imagery dates vary by geography and are not live satellite views. Source-specific licensing and caching requirements always take precedence over Stratlas defaults.
 
 ## New sources
 
