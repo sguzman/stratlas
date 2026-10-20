@@ -78,8 +78,15 @@
         </select>
         <div id="acs-legend" aria-label="Census thematic map legend"></div>
         <p id="acs-status" class="meta" aria-live="polite">Off · ACS 2020–2024 · Census Reporter / TIGERweb · zoom 12+</p>
-        <p class="meta">Choose a layer above. Already loaded features stay visible while zooming out; new Census data loads at zoom 12+ and new zoning at zoom 13+. API errors appear in each layer status.</p>
-        <p class="meta">Election results, household wealth, and land prices remain planned. No synthetic data.</p>
+        <label class="check data-label"><input id="assessor" type="checkbox"> LA County assessed land value</label>
+        <div id="assessor-controls" hidden>
+          <div class="assessor-opacity-label"><label for="assessor-opacity">Parcel opacity</label><output id="assessor-opacity-value" for="assessor-opacity">66%</output></div>
+          <input id="assessor-opacity" type="range" min="0" max="100" step="1" value="66">
+          <div id="assessor-legend" class="assessor-legend" aria-label="Assessed parcel land value legend" hidden></div>
+        </div>
+        <p id="assessor-status" class="meta" aria-live="polite">Off · LA County Assessor roll · zoom 16+ · not market prices</p>
+        <p class="meta">New Census data loads at zoom 12+, zoning at 13+, and assessor parcels at 16+. Previously loaded polygons stay available when zooming out. Source errors appear in each status.</p>
+        <p class="meta">Election results, household wealth, and market sale prices remain planned. No synthetic data.</p>
         <a href="https://github.com/sguzman/stratlas/blob/main/docs/sources/README.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
       </section>
       <footer>

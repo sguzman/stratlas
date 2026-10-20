@@ -1,4 +1,5 @@
 import { createZoningOverlay } from "./zoning.js";
+import { createParcelOverlay } from "./parcel.js";
 import { createCensusOverlay } from "./census.js";
 import { createGridOverlay } from "./grid.js";
 import { createDataCache } from "./data-cache.js";
@@ -154,6 +155,27 @@ async function start() {
     legendContainer:$("acs-legend")
   });
   $("acs-metric").addEventListener("change",event=>census.setMetric(event.target.value));
+  const assessor=createParcelOverlay(map,{
+    getRegion:()=>region().bbox,
+    filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
+    dataCache,legendContainer:$("assessor-legend"),
+    onStatus:message=>$("assessor-status").textContent=message
+  });
+  const assessorOpacity=$("assessor-opacity");
+  const assessorStored=Math.max(0,Math.min(100,Number(read("assessorOpacity","66"))||0));
+  assessorOpacity.value=String(assessorStored);
+  $("assessor-opacity-value").textContent=assessorStored+"%";
+  assessor.setOpacity(assessorStored/100);
+  assessorOpacity.addEventListener("input",event=>{
+    const percent=Number(event.target.value);
+    $("assessor-opacity-value").textContent=percent+"%";
+    assessor.setOpacity(percent/100);
+    write("assessorOpacity",String(percent));
+  });
+  $("assessor").addEventListener("change",event=>{
+    $("assessor-controls").hidden=!event.target.checked;
+    assessor.setEnabled(event.target.checked);
+  });
 
   // Defensive compatibility during rolling Pages/browser-cache updates:
   // one missing optional UI element must never prevent the whole map starting.
@@ -209,6 +231,7 @@ async function start() {
     map.setStyle(styleForBase());
     zoning.onRegionChange();
     census.onRegionChange();
+    assessor.onRegionChange();
     grid.onRegionChange();
   }
   function switchBase() {
@@ -257,6 +280,7 @@ async function start() {
       const ok=await dataCache.clear();
       zoning.clearMemory();
       census.clearMemory();
+      assessor.clearMemory();
       $("cache-status").textContent=ok
         ? "Stored API responses removed. Current map remains visible; future requests reload."
         : "Persistent storage unavailable. In-memory geographic responses cleared.";

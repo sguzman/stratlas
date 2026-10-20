@@ -50,6 +50,17 @@ try{
   assert.ok(await page.locator("#zoning-legend").getByText("Single Family Residential").isVisible());
   await page.locator("#zoning").uncheck();
   assert.equal(await page.locator("#zoning-legend").isVisible(),false);
+  assert.equal(await page.locator("#assessor-legend").isVisible(),false);
+  await page.locator("#assessor").check();
+  assert.equal(await page.locator("#assessor-controls").isVisible(),true);
+  assert.equal(await page.locator(".assessor-legend-item").count(),7);
+  assert.match(await page.locator("#assessor-legend").textContent(),/NOT market or sale prices/);
+  await page.locator("#assessor-opacity").evaluate(el=>{
+    el.value="39";el.dispatchEvent(new Event("input",{bubbles:true}));
+  });
+  assert.equal(await page.locator("#assessor-opacity-value").textContent(),"39%");
+  await page.locator("#assessor").uncheck();
+  assert.equal(await page.locator("#assessor-legend").isVisible(),false);
   const initial=await page.locator("#zoom-level").textContent();
   await page.locator(".maplibregl-ctrl-zoom-in").click();
   await page.waitForFunction(old=>document.querySelector("#zoom-level")?.textContent!==old,initial,

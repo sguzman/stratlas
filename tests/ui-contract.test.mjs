@@ -21,4 +21,8 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(html.includes('id="zoning-opacity"'));
   assert.ok(html.includes('id="zoning-opacity-value"'));
   assert.ok(app.includes('legendContainer:$("zoning-legend")'));
+  for(const id of ["assessor","assessor-controls","assessor-legend",
+    "assessor-opacity","assessor-opacity-value","assessor-status"])
+    assert.ok(html.includes('id="'+id+'"'),"Missing parcel UI: "+id);
+  assert.ok(app.includes('createParcelOverlay'));
 });

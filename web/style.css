@@ -74,3 +74,16 @@ main{position:relative;min-width:0;background:#15212b}
 
 .zoning-opacity-label{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .zoning-opacity-label label{margin-bottom:5px;color:#b8cbd6}
+
+/* County assessor parcel value visualization; controls remain hidden when off. */
+#assessor-controls[hidden],.assessor-legend[hidden]{display:none}
+#assessor-controls{margin:5px 0 13px}
+.assessor-opacity-label{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.assessor-opacity-label label{margin-bottom:5px;color:#b8cbd6}
+#assessor-opacity-value{color:#e4f2f9;font-size:12px;font-variant-numeric:tabular-nums}
+#assessor-opacity{display:block;width:100%;margin:4px 0 12px;accent-color:#68bbd1;cursor:pointer}
+.assessor-legend{margin:9px 0 13px;padding:10px;border:1px solid #354d60;border-radius:8px;background:#182b3a}
+.assessor-legend>strong{display:block;font-size:12px;margin-bottom:10px}
+.assessor-legend-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.assessor-legend-item{display:flex;align-items:center;gap:7px;min-width:0;font-size:10.5px;color:#c6d7e2}
+.assessor-legend-swatch{display:block;flex:0 0 14px;height:14px;width:14px;border:1px solid #ffffff55;border-radius:3px}

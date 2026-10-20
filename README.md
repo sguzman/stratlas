@@ -8,7 +8,7 @@ Rust/WebAssembly-first geographic research map. MapLibre renders the map; Rust p
 
 Choose a study rectangle and basemap. The optional XYZ tile grid outlines Web Mercator tiles above all basemaps and data overlays, using Rust/WASM geometry. Its enabled state survives reloads; at very high zoom its displayed grid level may be coarsened for clarity.
 
-**Statistical overlays are disabled by default.** For a one-click example, select **Show LA income at tract scale** in Data Layers. New Los Angeles census estimates load at zoom 12+; new LA City zoning loads at zoom 13+. Previously loaded features stay visible when zooming out or toggling layers back on. This is *visited-area* coverage, not a full county download. Both are geographically limited pilots. The sidebar reports loading, errors, and source coverage.
+**Data overlays are optional.** Census estimates (zoom 12+), Los Angeles City zoning (zoom 13+), and Los Angeles County assessed parcel land values (zoom 16+) use public geographic APIs. Previously loaded features remain available across navigation. The sidebar reports source coverage, loading progress, and errors.
 
 ## Development
 
@@ -26,6 +26,6 @@ Open http://localhost:8080/. GitHub Actions deploys updates from main.
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Source registry](docs/sources/README.md) and [machine-readable data source catalog](docs/sources/catalog.json)
-- [Census/ACS](docs/CENSUS.md) · [Zoning](docs/ZONING.md) · [Cache](docs/CACHE.md)
+- [Census/ACS](docs/CENSUS.md) · [Zoning](docs/ZONING.md) · [Assessed parcels](docs/PARCELS.md) · [Cache](docs/CACHE.md)
 
 Detailed data provenance, licenses, coverage, and feature status belong in the source registry. This README is not a changelog.

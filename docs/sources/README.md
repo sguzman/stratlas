@@ -11,7 +11,7 @@ This directory is Stratlas's source of truth for provider provenance. The [machi
 
 ## Interpretation safeguards
 
-Income is not wealth. Census tracts are aggregate geographies, not personal records. Electoral results do not disclose individual voting preferences. Administrative presets are study rectangles, not precise municipal boundaries. OpenStreetMap community tiles may not be bulk-prefetched. Source-specific licensing and caching requirements always take precedence over Stratlas defaults.
+Income is not wealth. County assessor tax-roll land values are not market sale prices. Census tracts are aggregate geographies, not personal records. Electoral results do not disclose individual voting preferences. Administrative presets are study rectangles, not precise municipal boundaries. OpenStreetMap community tiles may not be bulk-prefetched. Source-specific licensing and caching requirements always take precedence over Stratlas defaults.
 
 ## New sources
 

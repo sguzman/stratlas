@@ -21,7 +21,7 @@ for kind, filename in (("href", "style.css"), ("src", "app.js")):
     change("web/index.html", before,
            kind + '="./' + filename + '?v=' + version + '"')
 
-for module in ("zoning.js", "census.js", "grid.js",
+for module in ("zoning.js", "census.js", "parcel.js", "grid.js",
                "data-cache.js", "pkg/stratlas_core.js"):
     before = 'from "./' + module + '"'
     change("web/app.js", before,

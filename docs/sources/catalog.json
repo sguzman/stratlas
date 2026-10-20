@@ -136,6 +136,30 @@
       "limits": "Batches of up to 40 visible GEOIDs, two concurrent requests; ACS sampling error and suppressed estimates."
     },
     {
+      "id": "lacounty-assessor-parcels",
+      "type": "feature-api",
+      "name": "Los Angeles County Assessor parcels and tax-roll assessments",
+      "endpoint": "https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/FeatureServer/0/query",
+      "metadata": "https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/FeatureServer/0",
+      "status": "implemented-browser-qa-pending",
+      "coverage": "Pilot: parcel polygons inside visible Los Angeles County study rectangle",
+      "date": "Parcel-specific Roll_Year from source (not a uniform current-year price)",
+      "fields": [
+        "OBJECTID",
+        "AIN",
+        "Roll_Year",
+        "Roll_LandValue",
+        "Roll_ImpValue"
+      ],
+      "attribution": "Los Angeles County Office of the Assessor / LA County GIS",
+      "policy": "Public LA County ArcGIS parcel service metadata; provider permissions and cache headers govern use",
+      "credentials": "none for published ArcGIS layer",
+      "cache": "HTTP/IndexedDB up to 24 hours, further restricted by source response directives; memory retains previously visited parcels",
+      "min_zoom": 16,
+      "limits": "Region-bounded ArcGIS ID lookup; 35 missing parcel polygons per request, max 3 concurrent; 12,000 retained geometry features. Never a full county mirror.",
+      "interpretation": "Assessed land and improvement roll values are NOT recent sale prices, market prices or household wealth."
+    },
+    {
       "id": "la-geohub",
       "type": "candidate",
       "name": "Los Angeles GeoHub",
