@@ -154,3 +154,41 @@ test("legend identifies assessed values and not sale or market prices",()=>{
     p.setEnabled(false);assert.equal(container.hidden,true);
   }finally{globalThis.document=prev}
 });
+
+test("panning while old parcel requests are pending prioritizes the second area",async()=>{
+  const map=new FakeMap(),statuses=[],urls=[];
+  const pendingOld=[];
+  let requestedNew=0;
+  globalThis.fetch=async url=>{
+    const u=new URL(url);urls.push(u);
+    if(u.searchParams.get("returnIdsOnly")==="true"){
+      const west=Number(u.searchParams.get("geometry").split(",")[0]);
+      return response({objectIds:west<-118.29
+        ? Array.from({length:20},(_,i)=>501+i)
+        : Array.from({length:105},(_,i)=>1+i)});
+    }
+    const ids=u.searchParams.get("objectIds").split(",").map(Number);
+    if(ids[0]<500)
+      return new Promise(resolve=>pendingOld.push(()=>resolve(response(collection(ids)))));
+    requestedNew++;
+    return response(collection(ids));
+  };
+  const p=opts(map,statuses);
+  p.setEnabled(true);await settle();
+  assert.equal(pendingOld.length,3,"first area has three in-flight batches");
+  map.box=[-118.311,34.034,-118.304,34.040];
+  map.fire("moveend");
+  await new Promise(r=>setTimeout(r,190));await settle();
+  assert.equal(urls.filter(u=>u.searchParams.get("returnIdsOnly")==="true").length,2,
+    "moving the camera must request second-area IDs without waiting for the first area");
+  assert.equal(requestedNew,0,"three-way concurrency is respected");
+  pendingOld.shift()();await drawn();
+  assert.equal(requestedNew,1,"new-area features start when a worker becomes available");
+  assert.ok(map.getSource("assessor-parcels").data.features.some(f=>
+    f.properties.OBJECTID>=501),"second area's geometry becomes visible");
+  for(const finish of pendingOld.splice(0))finish();
+  await drawn();
+  const before=urls.length;
+  p.setEnabled(false);p.setEnabled(true);await drawn();
+  assert.equal(urls.length,before,"returning to the second area reuses known parcel geometry");
+});

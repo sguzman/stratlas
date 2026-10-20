@@ -57,6 +57,20 @@ try{
     "Missing live assessor ID discovery");
   assert.ok(responses.some(x=>new URL(x.url).searchParams.has("objectIds")),
     "Missing live assessor parcel geometry requests");
+  const originalIds=new Set(responses.filter(x=>
+    new URL(x.url).searchParams.get("returnIdsOnly")==="true").map(x=>x.url));
+  await page.mouse.move(600,375);
+  await page.mouse.down();
+  await page.mouse.move(960,393,{steps:15});
+  await page.mouse.up();
+  let sawSecondArea=false;
+  for(let i=0;i<90;i++){
+    await page.waitForTimeout(350);
+    sawSecondArea=responses.some(x=>
+      new URL(x.url).searchParams.get("returnIdsOnly")==="true"&&!originalIds.has(x.url));
+    if(sawSecondArea)break;
+  }
+  assert.ok(sawSecondArea,"Panning must query parcel IDs for a second viewport");
   assert.equal(errors.length,0,"Browser exceptions: "+errors.join("; "));
   console.log("Live Assessor parcel layer:",await page.locator("#assessor-status").textContent());
   console.log("Provider requests:",responses.length);
