@@ -36,14 +36,16 @@
       "name": "USGS The National Map Topographic",
       "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
       "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer",
-      "status": "implemented-browser-qa-pending",
+      "status": "implemented-browser-verified",
       "coverage": "Primarily U.S. with some global overview",
       "date": "Service refreshed September 2026; source vintage varies",
       "attribution": "USGS The National Map and component data providers",
       "policy": "https://apps.nationalmap.gov/services/",
       "credentials": "none",
       "cache": "Normal browser HTTP tile caching; no bulk prefetch",
-      "limits": "Native raster detail to z16, browser overzoom beyond."
+      "limits": "Native raster detail to z16, browser overzoom beyond.",
+      "verification": "Live Chromium provider request plus browser UI regression checks; tests run in GitHub Actions. Availability and geographic coverage may vary.",
+      "verification_run": "https://github.com/sguzman/stratlas/actions/runs/39455254611"
     },
     {
       "id": "usgs-relief",
@@ -51,14 +53,16 @@
       "name": "USGS Shaded Relief",
       "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
       "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer",
-      "status": "implemented-browser-qa-pending",
+      "status": "implemented-browser-verified",
       "coverage": "Primarily U.S. elevation, global context less detailed",
       "date": "Service refreshed September 2025; 3DEP vintages vary",
       "attribution": "USGS The National Map 3DEP and EROS GMTED2010",
       "policy": "https://apps.nationalmap.gov/services/",
       "credentials": "none",
       "cache": "Normal browser HTTP tile caching; no bulk prefetch",
-      "limits": "Shaded relief is not numeric elevation; native detail to z16. Some ocean/unsupported tiles return 404 and are displayed as empty coverage."
+      "limits": "Shaded relief is not numeric elevation; native detail to z16. Some ocean/unsupported tiles return 404 and are displayed as empty coverage.",
+      "verification": "Live Chromium provider request plus browser UI regression checks; tests run in GitHub Actions. Availability and geographic coverage may vary.",
+      "verification_run": "https://github.com/sguzman/stratlas/actions/runs/39455254611"
     },
     {
       "id": "usgs-imagery",
@@ -66,14 +70,16 @@
       "name": "USGS Orthoimagery",
       "endpoint": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
       "metadata": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer",
-      "status": "implemented-browser-qa-pending",
+      "status": "implemented-browser-verified",
       "coverage": "Primarily U.S. NAIP aerial imagery",
       "date": "Image acquisition dates vary; service refreshed June 2024",
       "attribution": "USGS The National Map and USDA NAIP",
       "policy": "https://apps.nationalmap.gov/services/",
       "credentials": "none",
       "cache": "Normal browser HTTP tile caching; no bulk prefetch",
-      "limits": "Not live satellite imagery; native detail to z16."
+      "limits": "Not live satellite imagery; native detail to z16.",
+      "verification": "Live Chromium provider request plus browser UI regression checks; tests run in GitHub Actions. Availability and geographic coverage may vary.",
+      "verification_run": "https://github.com/sguzman/stratlas/actions/runs/39455254611"
     },
     {
       "id": "carto-voyager",
@@ -120,7 +126,7 @@
       "name": "LA City Department of City Planning zoning",
       "endpoint": "https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15/query",
       "metadata": "https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15",
-      "status": "implemented-browser-qa-pending",
+      "status": "implemented-browser-verified",
       "coverage": "Los Angeles City; visible study area",
       "date": "live mutable dataset",
       "fields": [
@@ -133,7 +139,9 @@
       "credentials": "none",
       "cache": "Up to six hours for ID lookups and polygon GeoJSON, capped by provider directives; browser session retains polygons by OBJECTID",
       "min_zoom": 13,
-      "limits": "Viewport-scoped ArcGIS returnIdsOnly discovery; missing geometries retrieved in 40-ID batches with three concurrent requests, published progressively; no fixed total request cutoff."
+      "limits": "Viewport-scoped ArcGIS returnIdsOnly discovery; missing geometries retrieved in 40-ID batches with three concurrent requests, published progressively; no fixed total request cutoff.",
+      "verification": "Live Chromium provider request plus browser UI regression checks; tests run in GitHub Actions. Availability and geographic coverage may vary.",
+      "verification_run": "https://github.com/sguzman/stratlas/actions/runs/39455254611"
     },
     {
       "id": "tiger-tracts",
@@ -186,7 +194,7 @@
       "name": "Los Angeles County Assessor parcels and tax-roll assessments",
       "endpoint": "https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/FeatureServer/0/query",
       "metadata": "https://cache.gis.lacounty.gov/cache/rest/services/LACounty_Cache/LACounty_Parcel/FeatureServer/0",
-      "status": "implemented-browser-qa-pending",
+      "status": "implemented-browser-verified",
       "coverage": "Pilot: parcel polygons inside visible Los Angeles County study rectangle",
       "date": "Parcel-specific Roll_Year from source (not a uniform current-year price)",
       "fields": [
@@ -202,7 +210,9 @@
       "cache": "HTTP/IndexedDB up to 24 hours, further restricted by source response directives; memory retains previously visited parcels",
       "min_zoom": 16,
       "limits": "Region-bounded ArcGIS ID lookup; 35 missing parcel polygons per request, max 3 concurrent; 12,000 retained geometry features. Never a full county mirror.",
-      "interpretation": "Assessed land and improvement roll values are NOT recent sale prices, market prices or household wealth."
+      "interpretation": "Assessed land and improvement roll values are NOT recent sale prices, market prices or household wealth.",
+      "verification": "Live Chromium provider request plus browser UI regression checks; tests run in GitHub Actions. Availability and geographic coverage may vary.",
+      "verification_run": "https://github.com/sguzman/stratlas/actions/runs/39455254611"
     },
     {
       "id": "la-geohub",
