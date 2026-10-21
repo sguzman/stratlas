@@ -27,6 +27,8 @@ The [source catalog](../sources/catalog.json) provides the authoritative provide
 
 ## What is actually pulled into the map?
 
+**Thematic controls:** Zoning, Census metrics, and assessed land values share one **Geographic data to display** selector; only one thematic data layer is active at a time. Wide-area source statistics appear in the HUD as labeled numbers, not as false zoning/parcel shapes. The source-specific polygons remain available on close zoom.
+
 **Basemaps:** One selected raster basemap supplies only currently relevant tile images. The tile layer is a visual background, not a source of numerical elevation or population measurements. CARTO entries require a user-provided key. USGS coverage is principally United States geography.
 
 **Zoning:** The LA City Planning API provides visible zoning feature IDs, then source polygons with provider-supplied `Zoning` and `CATEGORY` attributes. Stratlas draws colored categories with a legend and hover highlight. Only the provider's served jurisdiction is covered.

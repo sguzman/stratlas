@@ -10,7 +10,7 @@ The color bands are fixed nominal USD thresholds, not dynamically re-normalized 
 
 ## Browser-only loading
 
-Stratlas restricts the source to the **intersection** of the selected rectangular study region, visible viewport, and Los Angeles County pilot bounds. No outside features are prefetched. At broad zoom, the map requests ArcGIS source-side summary statistics for at most nine visible, repeatable geographic cells. The summary shows the mean **tax-roll assessed land value** and the count of intersecting parcels; it is neither a market price nor a complete download of every parcel. Individual parcel geometry requests begin at zoom 16+, avoiding a county-wide bulk parcel download.
+Stratlas restricts the source to the **intersection** of the selected rectangular study region, visible viewport, and Los Angeles County pilot bounds. No outside features are prefetched. At broad zoom, one ArcGIS source-side statistics query provides the mean **tax-roll assessed land value** and count of intersecting parcels within the visible study area. The HUD lists these measurements; the map **never paints arbitrary statistical query envelopes as property values**. Individual parcel geometry requests begin at zoom 16+, avoiding a county-wide bulk parcel download. The numeric summary is neither a market valuation nor a claim that every parcel has been downloaded.
 
 The loader calls the ArcGIS \`returnIdsOnly=true\` API for intersecting parcel identifiers; then retrieves **only missing polygons** in groups of 35 with at most three simultaneous requests. As individual groups complete, geometry is added to MapLibre; visiting or zooming away retains successfully loaded parcels in browser memory. A moving camera prioritizes its newest viewport while older in-flight groups may complete. Missing IDs remain retryable.
 
@@ -20,7 +20,7 @@ The boundary work is handled by Stratlas's Rust/WASM \`filter_geojson_bbox\`; Ma
 
 ## UI and accessibility
 
-A separate **LA County assessed land value** checkbox enables this optional overlay. Its sidebar legend labels all fixed value bands and the unavailable-data color. An opacity slider (default 66%) changes the fill without network requests, and the preference is retained locally.
+Choose **LA County assessed land value** from the single **Geographic data to display** selector. It replaces the previously active thematic layer, rather than appearing as another independent menu. Its sidebar legend labels all fixed value bands and the unavailable-data color. An opacity slider (default 66%) changes the fill without network requests, and the preference is retained locally.
 
 ## Source registry and validation
 

@@ -45,7 +45,7 @@ try{
       if(Number(visible?.[1]||0)>0)window.__zoningLoaded=true;
     }).observe(el,{childList:true,characterData:true,subtree:true});
   });
-  await page.locator("#zoning").check();
+  await page.locator("#acs-metric").selectOption("zoning");
   try{
     await page.waitForFunction(()=>window.__zoningLoaded,null,{timeout:90000});
   }catch(error){

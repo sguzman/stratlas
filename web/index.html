@@ -75,33 +75,36 @@
       </section>
       <section class="coming">
         <h2>Data layers</h2>
-        <label class="check"><input id="zoning" type="checkbox"> Los Angeles City zoning</label>
+        <label for="acs-metric" class="data-label">Geographic data to display</label>
+        <select id="acs-metric">
+          <option value="off">No thematic layer</option>
+          <option value="zoning">LA City zoning</option>
+          <optgroup label="LA County Census · 2020–2024">
+            <option value="income">Median household income</option>
+            <option value="population">Population per tract</option>
+            <option value="hispanic">Hispanic or Latino (%)</option>
+            <option value="female">Female population (%)</option>
+            <option value="white">Non-Hispanic White alone (%)</option>
+          </optgroup>
+          <option value="assessor">LA County assessed land value</option>
+        </select>
         <div id="zoning-controls" hidden>
           <div class="zoning-opacity-label"><label for="zoning-opacity">Zoning opacity</label><output id="zoning-opacity-value" for="zoning-opacity">42%</output></div>
           <input id="zoning-opacity" type="range" min="0" max="100" step="1" value="42">
           <div id="zoning-legend" class="zoning-legend" aria-label="Zoning category color legend" hidden></div>
         </div>
-        <p id="overlay-status" class="meta" aria-live="polite">Off · LA City Planning · wide-area category summaries, detailed zoning on close zoom</p>
-        <label for="acs-metric" class="data-label">US Census · Los Angeles County tracts</label>
-        <select id="acs-metric">
-          <option value="off">Census overlay off</option>
-          <option value="income">Median household income</option>
-          <option value="population">Population per tract</option>
-          <option value="hispanic">Hispanic or Latino (%)</option>
-          <option value="female">Female population (%)</option>
-          <option value="white">Non-Hispanic White alone (%)</option>
-        </select>
-        <div id="acs-legend" aria-label="Census thematic map legend"></div>
-        <p id="acs-status" class="meta" aria-live="polite">Off · 2020–2024 ACS · county-level summary or tract-level detail</p>
-        <label class="check data-label"><input id="assessor" type="checkbox"> LA County assessed land value</label>
+        <div id="acs-legend" aria-label="Census thematic map legend" hidden></div>
         <div id="assessor-controls" hidden>
           <div class="assessor-opacity-label"><label for="assessor-opacity">Parcel opacity</label><output id="assessor-opacity-value" for="assessor-opacity">66%</output></div>
           <input id="assessor-opacity" type="range" min="0" max="100" step="1" value="66">
           <div id="assessor-legend" class="assessor-legend" aria-label="Assessed parcel land value legend" hidden></div>
         </div>
-        <p id="assessor-status" class="meta" aria-live="polite">Off · LA County Assessor · area summaries or detailed parcels · not market prices</p>
-        <p class="meta">Wide views request provider summaries instead of every feature. Zoom closer for tract, zoning-polygon, and parcel detail. Cached geographic API responses are reused when source policies permit; errors and progress appear in each layer status.</p>
-        <p class="meta">Election results, household wealth, and market sale prices remain planned. No synthetic data.</p>
+        <p id="overlay-status" class="meta" aria-live="polite" hidden>LA City Planning · source polygons at detailed scale</p>
+        <p id="acs-status" class="meta" aria-live="polite" hidden>Census Reporter / TIGERweb · source tracts at detailed scale</p>
+        <p id="assessor-status" class="meta" aria-live="polite" hidden>LA County Assessor · actual parcels at detailed scale</p>
+        <div id="area-summary" class="area-summary" aria-live="polite" hidden></div>
+        <p class="meta">Wide views show source-reported statistics here, never invented colored geographic cells. Zoom closer to see actual zoning, tract, or parcel polygons. Provider limits and source coverage still apply.</p>
+        <p class="meta">Tax-roll assessments are not market sale prices. Election results and household wealth remain planned.</p>
         <a href="https://github.com/sguzman/stratlas/blob/main/docs/sources/README.md" target="_blank" rel="noopener noreferrer">Source catalog &amp; coverage notes ↗</a>
       </section>
       <footer>

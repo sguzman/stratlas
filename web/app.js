@@ -179,13 +179,7 @@ async function start() {
     const pct=Number(event.target.value);
     $("zoning-opacity-value").textContent=pct+"%";
     zoning.setOpacity(pct/100);
-    overview.setZoningOpacity(pct/100);
     write("zoningOpacity",String(pct));
-  });
-  $("zoning").addEventListener("change",event=>{
-    $("zoning-controls").hidden=!event.target.checked;
-    zoning.setEnabled(event.target.checked);
-    overview.setZoning(event.target.checked);
   });
   const census=createCensusOverlay(map,{
     getRegion:()=>region().bbox,
@@ -194,10 +188,6 @@ async function start() {
     dataCache,
     onStatus:message=>$("acs-status").textContent=message,
     legendContainer:$("acs-legend")
-  });
-  $("acs-metric").addEventListener("change",event=>{
-    census.setMetric(event.target.value);
-    overview.setCensus(event.target.value);
   });
   const assessor=createParcelOverlay(map,{
     getRegion:()=>region().bbox,
@@ -214,26 +204,55 @@ async function start() {
     const percent=Number(event.target.value);
     $("assessor-opacity-value").textContent=percent+"%";
     assessor.setOpacity(percent/100);
-    overview.setParcelOpacity(percent/100);
     write("assessorOpacity",String(percent));
-  });
-  $("assessor").addEventListener("change",event=>{
-    $("assessor-controls").hidden=!event.target.checked;
-    assessor.setEnabled(event.target.checked);
-    overview.setParcel(event.target.checked);
   });
   const overview=createWideOverview(map,{
     getRegion:()=>region().bbox,
-    filterFeatures:(input,...bounds)=>filter_geojson_bbox(input,...bounds),
     dataCache,
     onStatus:(kind,message)=>{
-      const node=$(kind==="census"?"acs-status":
-        kind==="parcel"?"assessor-status":"overlay-status");
-      node.textContent=message;
+      $(kind==="census"?"acs-status":kind==="parcel"?"assessor-status":
+        "overlay-status").textContent=message;
+    },
+    onSummary:summary=>{
+      const container=$("area-summary");
+      container.replaceChildren();
+      container.hidden=!summary.rows.length;
+      if(!summary.rows.length)return;
+      const title=document.createElement("strong");
+      title.textContent=summary.title;
+      const note=document.createElement("p");
+      note.textContent=summary.description;
+      const rows=document.createElement("dl");
+      for(const row of summary.rows){
+        const label=document.createElement("dt"),value=document.createElement("dd");
+        label.textContent=row.label;value.textContent=row.value;
+        rows.append(label,value);
+      }
+      container.append(title,note,rows);
     }
   });
-  overview.setZoningOpacity(storedOpacity/100);
-  overview.setParcelOpacity(assessorStored/100);
+  const thematicValues=new Set(["off","zoning","income","population",
+    "hispanic","female","white","assessor"]);
+  const selector=$("acs-metric");
+  const preferred=read("dataLayer","off");
+  selector.value=thematicValues.has(preferred)?preferred:"off";
+  function selectThematicLayer(){
+    const value=thematicValues.has(selector.value)?selector.value:"off";
+    const zone=value==="zoning",parcel=value==="assessor";
+    const censusOn=!zone&&!parcel&&value!=="off";
+    $("zoning-controls").hidden=!zone;
+    $("assessor-controls").hidden=!parcel;
+    $("acs-legend").hidden=!censusOn;
+    $("overlay-status").hidden=!zone;
+    $("assessor-status").hidden=!parcel;
+    $("acs-status").hidden=!censusOn;
+    zoning.setEnabled(zone);
+    census.setMetric(censusOn?value:"off");
+    assessor.setEnabled(parcel);
+    overview.setSelection(value);
+    write("dataLayer",value);
+  }
+  selector.addEventListener("change",selectThematicLayer);
 
   // Defensive compatibility during rolling Pages/browser-cache updates:
   // one missing optional UI element must never prevent the whole map starting.
@@ -361,6 +380,7 @@ async function start() {
     applyRegion(true);
     setStatus("Rust/WASM ready · loading visible tiles within "+region().name+".");
     if (BASES[state.baseId].needsKey && !state.cartoKey) switchBase();
+    selectThematicLayer();
   });
 }
 

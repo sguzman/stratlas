@@ -42,7 +42,7 @@ try{
       if(Number(match?.[1]||0)>0)window.__parcelLoaded=true;
     }).observe(element,{childList:true,characterData:true,subtree:true});
   });
-  await page.locator("#assessor").check();
+  await page.locator("#acs-metric").selectOption("assessor");
   try {
     await page.waitForFunction(()=>window.__parcelLoaded,null,{timeout:110000});
   } catch(error) {

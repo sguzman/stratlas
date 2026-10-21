@@ -3,7 +3,7 @@
   "catalog": "../sources/catalog.json",
   "ontology": "model.json",
   "description": "Source-to-dataset-to-feature-to-presentation bindings. Status, endpoint, terms and verification remain authoritative in the source catalog; nothing here performs a network request.",
-  "integration_rule": "A source is fetched only if the runtime adapter is enabled and its viewport/zoom/provider restrictions permit; basemaps are selected one at a time.",
+  "integration_rule": "A single geographic-data selector activates one thematic overlay at a time; source-bound summary values appear in the HUD at wide zoom, and real source features render at detailed zoom. No query-envelope rectangles are painted as geography. Raster basemaps remain independently selected.",
   "sources": [
     {
       "source_id": "osm",
@@ -331,7 +331,7 @@
       "id": "zoning",
       "label": "LA City zoning",
       "presentation": "categorical_fill_with_highlight",
-      "selection_element": "zoning",
+      "selection_element": "acs-metric",
       "source_ids": [
         "la-zoning"
       ],
@@ -356,7 +356,7 @@
       "id": "assessed_land_value",
       "label": "LA County tax-roll assessed land values",
       "presentation": "fixed_band_choropleth",
-      "selection_element": "assessor",
+      "selection_element": "acs-metric",
       "source_ids": [
         "lacounty-assessor-parcels"
       ],

@@ -35,11 +35,16 @@ test("HTML and JavaScript agree about required elements",()=>{
   assert.ok(html.includes('id="zoning-opacity"'));
   assert.ok(html.includes('id="zoning-opacity-value"'));
   assert.ok(app.includes('legendContainer:$("zoning-legend")'));
-  for(const id of ["assessor","assessor-controls","assessor-legend",
-    "assessor-opacity","assessor-opacity-value","assessor-status"])
-    assert.ok(html.includes('id="'+id+'"'),"Missing parcel UI: "+id);
-  assert.ok(app.includes('createParcelOverlay'));
+  for(const id of ["assessor-controls","assessor-legend",
+    "assessor-opacity","assessor-opacity-value","assessor-status","area-summary"])
+    assert.ok(html.includes('id="'+id+'"'),"Missing thematic UI: "+id);
+  assert.ok(!html.includes('id="zoning"'));
+  assert.ok(!html.includes('id="assessor"'));
+  for(const value of ["off","zoning","income","population","hispanic","female","white","assessor"])
+    assert.ok(html.includes('value="'+value+'"'),"Missing thematic option: "+value);
+  assert.ok(app.includes("createParcelOverlay"));
   assert.ok(app.includes("createWideOverview"));
+  assert.ok(app.includes("selectThematicLayer"));
   assert.ok(html.includes('id="cache-live"'));
-  assert.ok(html.includes("Wide views request provider summaries"));
+  assert.ok(html.includes("never invented colored geographic cells"));
 });

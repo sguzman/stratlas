@@ -32,7 +32,7 @@ try{
     const url=new URL(route.request().url());
     if(!url.searchParams.has("outStatistics"))return route.continue();
     seen.parcel++;
-    return route.fulfill({json:{features:[{attributes:{n:34,avg_value:251000}}]}});
+    return route.fulfill({json:{features:[{attributes:{n:34,mean_value:251000}}]}});
   });
   await page.route("https://api.censusreporter.org/**",
     route=>route.fulfill({json:{data:{"05000US06037":{
@@ -116,42 +116,54 @@ try{
     let sum=0;for(let i=3;i<a.length;i+=4)sum+=a[i];return sum;
   });
   assert.ok(currentGridPaint>0 && gridPaint>0,"Grid overlay remains painted in both themes");
-  // Wide zoom may load small source-side geographic aggregates, not every polygon.
+  // Thematic layers share ONE selector, and low zoom uses numerical HUD
+  // statistics rather than fabricated map polygons.
+  const layerSelector=page.locator("#acs-metric");
+  assert.deepEqual(await layerSelector.locator("option").evaluateAll(
+    options=>options.map(el=>el.value)),
+    ["off","zoning","income","population","hispanic","female","white","assessor"]);
+  assert.equal(await page.locator("#zoning").count(),0);
+  assert.equal(await page.locator("#assessor").count(),0);
+  assert.equal(await page.locator("#area-summary").isVisible(),false);
   assert.ok(await page.locator("#cache-live").count());
-  // Toggling still
-  // needs to expose a complete, truthful categorical legend.
-  assert.equal(await page.locator("#zoning-legend").isVisible(),false);
-  await page.locator("#zoning").check();
+  await layerSelector.selectOption("zoning");
   assert.equal(await page.locator("#zoning-controls").isVisible(),true);
-  assert.equal(await page.locator("#zoning-opacity-value").textContent(),"42%");
-  await page.locator("#zoning-opacity").evaluate(element=>{element.value="76";element.dispatchEvent(new Event("input",{bubbles:true}));});
-  assert.equal(await page.locator("#zoning-opacity-value").textContent(),"76%");
-  assert.equal(await page.locator("#zoning-legend").isVisible(),true);
+  assert.equal(await page.locator("#assessor-controls").isVisible(),false);
   assert.equal(await page.locator(".zoning-legend-item").count(),17);
-  assert.ok(await page.locator("#zoning-legend").getByText("Single Family Residential").isVisible());
-  await page.waitForFunction(()=>document.querySelector("#overlay-status")?.textContent.includes("geographic cells"),null,{timeout:12000});
-  assert.ok(seen.zoning>0,"Wide view must request server-side zoning statistics");
-  await page.locator("#zoning").uncheck();
-  assert.equal(await page.locator("#zoning-legend").isVisible(),false);
-  assert.equal(await page.locator("#assessor-legend").isVisible(),false);
-  await page.locator("#assessor").check();
+  await page.waitForFunction(()=>document.querySelector("#area-summary")?.textContent.includes("source polygons"),
+    null,{timeout:12000});
+  assert.ok(seen.zoning>0,"Low zoom must fetch zoning statistics");
+  assert.match(await page.locator("#area-summary").textContent(),/not land-area percentages/i);
+  await page.locator("#zoning-opacity").evaluate(el=>{
+    el.value="76";el.dispatchEvent(new Event("input",{bubbles:true}));
+  });
+  assert.equal(await page.locator("#zoning-opacity-value").textContent(),"76%");
+  await layerSelector.selectOption("assessor");
+  assert.equal(await page.locator("#zoning-controls").isVisible(),false);
   assert.equal(await page.locator("#assessor-controls").isVisible(),true);
   assert.equal(await page.locator(".assessor-legend-item").count(),7);
-  assert.match(await page.locator("#assessor-legend").textContent(),/NOT market or sale prices/);
+  await page.waitForFunction(()=>document.querySelector("#area-summary")?.textContent.includes("Mean assessed land value"),
+    null,{timeout:12000});
+  assert.ok(seen.parcel>0,"Low zoom must fetch assessed-value statistics");
+  assert.match(await page.locator("#area-summary").textContent(),/not their market or sale price/i);
   await page.locator("#assessor-opacity").evaluate(el=>{
     el.value="39";el.dispatchEvent(new Event("input",{bubbles:true}));
   });
   assert.equal(await page.locator("#assessor-opacity-value").textContent(),"39%");
-  await page.waitForFunction(()=>document.querySelector("#assessor-status")?.textContent.includes("geographic cells"),null,{timeout:12000});
-  assert.ok(seen.parcel>0,"Wide view must request server-side assessor statistics");
-  await page.locator("#assessor").uncheck();
-  assert.equal(await page.locator("#assessor-legend").isVisible(),false);
-  await page.locator("#acs-metric").selectOption("population");
+  await layerSelector.selectOption("population");
+  assert.equal(await page.locator("#zoning-controls").isVisible(),false);
+  assert.equal(await page.locator("#assessor-controls").isVisible(),false);
   await page.waitForFunction(()=>
-    document.querySelector("#acs-status")?.textContent.includes("county-wide summary"),
+    document.querySelector("#area-summary")?.textContent.includes("County population"),
     null,{timeout:12000});
-  assert.match(await page.locator("#acs-legend").textContent(),/County population/);
-  await page.locator("#acs-metric").selectOption("off");
+  assert.match(await page.locator("#area-summary").textContent(),/2020–2024 ACS/);
+  await layerSelector.selectOption("off");
+  assert.equal(await page.locator("#area-summary").isVisible(),false);
+  assert.equal(await page.locator("#acs-legend").isVisible(),false);
+  assert.equal(await page.locator("#zoning-legend").isVisible(),false);
+  assert.equal(await page.locator("#assessor-legend").isVisible(),false);
+  // Browser-level regression: wide overlays must not paint synthetic cells.
+  assert.doesNotMatch(await page.locator("#status").textContent(),/Initialization failed/);
   // Official USGS raster tile styles share the same region-bounded protocol.
   await page.route("https://basemap.nationalmap.gov/**",
     route=>route.fulfill({body:png,contentType:"image/png"}));

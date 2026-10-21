@@ -18,7 +18,7 @@ The Los Angeles pilot is a starting implementation, not proof of full metropolit
 | `population_and_demographics` | Tract/local-equivalent population, sex and demographic proportions with source vintage | US Census TIGERweb + Census Reporter ACS |
 | `household_income` | Income by documented geography; correct uncertainty and missingness | 2020–2024 ACS estimates; not wealth |
 | `parcels_and_cadastre` | Source-backed parcel geometries and administrative IDs | LA County Assessor |
-| `land_and_improvement_assessments` | Land/improvement assessed values and roll dates, if available | LA County tax-roll assessments; not market value |
+| `land_and_improvement_assessments` | Land/improvement assessed values and roll dates, if available | LA County tax-roll assessments; not market value. Numeric HUD summaries at wide zoom; only actual parcels at detailed zoom |
 | `retrieval_caching_and_qa` | Viewport-bounded data loading, authorized caching, error recovery and verification | Browser GIS integrations and source registry |
 
 A common display contract does not require identical provider APIs, classification labels, currencies, administrative divisions, or survey instruments. If a data category is unavailable or legally inaccessible, preserve the category in the matrix and explain its status; do not invent a substitute.

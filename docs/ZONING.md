@@ -5,7 +5,7 @@
 The zoning layer uses Los Angeles City Department of City Planning's ArcGIS FeatureServer layer 15:
 https://services5.arcgis.com/7nsPwEMP38bSkCjy/arcgis/rest/services/Zoning/FeatureServer/15
 
-Its published fields include OBJECTID, Zoning, and CATEGORY. The service supports viewport-envelope queries, returnIdsOnly, and GeoJSON. At broad zoom, Stratlas requests source-side **grouped counts by CATEGORY** for at most nine visible, reproducible geographic cells. Their color describes the most frequent category by **number of intersecting source polygons, not land area**. At zoom 13+, individual zoning polygons are retrieved for the selected visible study rectangle. The overview is a summary, not a full download of zoning geometry. The [source registry](sources/README.md) owns attribution, vintage, and provider access metadata.
+Its published fields include OBJECTID, Zoning, and CATEGORY. The service supports viewport-envelope queries, returnIdsOnly, and GeoJSON. At broad zoom, Stratlas requests a source-side count grouped by `CATEGORY` over the visible study area. The HUD lists the most frequent source categories **by intersecting polygon count**, not land-area share. It does **not paint invented grid cells** or substitute those counts for true zoning boundaries. At zoom 13+, the detailed adapter progressively retrieves genuine source zoning polygons. This avoids a full-city polygon dump while preserving an honest overview. The [source registry](sources/README.md) owns attribution, vintage, and provider access metadata.
 
 ## Incremental loading
 
@@ -23,7 +23,7 @@ No giant hosted database or entire-city download is introduced. Zooming out or t
 
 ## Appearance and interactions
 
-The ZONING_CATEGORIES array powers both MapLibre colors and the sidebar legend. The slider adjusts fill opacity from 0–100%, with 42% as its default and the preference remembered locally. Hovering or keyboard-focusing a legend entry outlines matching loaded polygons in yellow without rewriting the base fill's opacity. Rapid pointer transitions are coalesced into a single animation frame to avoid flashing or repeated whole-layer repainting; leaving/focus-out removes the highlight. Polygon clicks show the source zoning designation and category. Legend and opacity controls are shown only while zoning is on.
+The ZONING_CATEGORIES array powers both MapLibre colors and the sidebar legend. Zoning is selected from the shared **Geographic data to display** menu; it is not an independent checkbox. The slider adjusts fill opacity from 0–100%, with 42% as its default and the preference remembered locally. Hovering or keyboard-focusing a legend entry outlines matching loaded polygons in yellow without rewriting the base fill's opacity. Rapid pointer transitions are coalesced into a single animation frame to avoid flashing or repeated whole-layer repainting; leaving/focus-out removes the highlight. Polygon clicks show the source zoning designation and category. Legend and opacity controls are shown only while zoning is on.
 
 ## Verification
 
